@@ -12,7 +12,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.2.17",
     "@neondatabase/serverless": "^1.0.0",
+    "ai": "^4.3.15",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.43.1",
     "fb-messenger-bot-api": "^4.4.0",
