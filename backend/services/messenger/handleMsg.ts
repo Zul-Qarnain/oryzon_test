@@ -88,6 +88,22 @@ export async function handleNewMessageFromPlatform(
 
                 try {
                     //handleImageMessage
+                    const messageContent: ChatMessageContent = {
+                        content: imageUrl,
+                        senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
+                        contentType: 'IMAGE',
+                        // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
+                    };
+        
+                    // If your chatsService.handleNewMessage was updated to accept platformMessageId in its first argument:
+                    // (messageContent as any).platformMessageId = platformMessageId; 
+                    // Or adjust ChatMessageContent and the Omit in chatsService.
+        
+                    await chatsService.handleNewMessage(
+                        messageContent,
+                        internalCustomerId,
+                        connectedChannelId
+                    );
                 } catch (error) {
                     console.error(`Failed to send image message to ${messageSenderPsid}:`, error);
                 }
