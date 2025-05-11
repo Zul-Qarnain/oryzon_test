@@ -1,270 +1,427 @@
-# System Architecture: Multi-Channel AI Bot Service
+# Project Architecture Documentation
 
-## 1. Introduction
+This document outlines the architecture for the database schema, backend services, and the Next.js API routes.
 
-This document outlines the database architecture for a multi-channel AI bot service. The service enables businesses (Users) to connect their social media and messaging platform accounts (Channels) to automate customer interactions, manage orders, and log conversations using AI-powered bots.
+## 1. Database Schema (`db/schema.ts`)
 
-## 2. Database Schema
+The database schema is defined using Drizzle ORM and resides in `db/schema.ts`. It is designed to support a multi-channel customer interaction platform.
 
-The following tables define the structure of the database.
+### 1.1. Core Entities and Fields
 
-### 2.1. `Users`
+Below is a description of the main tables and their fields:
 
-Represents the businesses signing up for the service.
+**Table: `users`**
+Stores information about business users.
 
-| Column             | Type                                      | Constraints / Notes                                     |
-|--------------------|-------------------------------------------|---------------------------------------------------------|
-| `user_id`          | STRING / UUID                             | Primary Key (PK)                                        |
-| `email`            | STRING                                    | Unique, Nullable (if using OAuth provider exclusively)  |
-| `password_hash`    | STRING                                    | Nullable (not used if `login_provider` is OAuth)        |
-| `business_name`    | STRING                                    |                                                         |
-| `login_provider`   | ENUM ('EMAIL', 'GOOGLE', 'FACEBOOK_AUTH') | Indicates authentication method                         |
-| `provider_user_id` | STRING                                    | Nullable, User's unique ID from the external provider |
-| `created_at`       | DATETIME                                  | Timestamp of creation                                   |
-| `updated_at`       | DATETIME                                  | Timestamp of last update                                |
+| Column              | Type                                  | Constraints                                  | Description                                      |
+|---------------------|---------------------------------------|----------------------------------------------|--------------------------------------------------|
+| `userId`            | `uuid`                                | PK, `default gen_random_uuid()`              | Unique identifier for the user.                  |
+| `email`             | `text`                                | Unique, Not Null                             | User's email address.                            |
+| `hashedPassword`    | `text`                                |                                              | Hashed password for email/password auth.         |
+| `loginProvider`     | `loginProviderEnum`                   |                                              | OAuth provider (EMAIL, GOOGLE, etc.).            |
+| `providerAccountId` | `text`                                |                                              | Account ID from the OAuth provider.              |
+| `businessName`      | `text`                                |                                              | Name of the user's business.                     |
+| `avatarUrl`         | `text`                                |                                              | URL to the user's avatar image.                  |
+| `createdAt`         | `timestamp`                           | Not Null, `default now()`                    | Timestamp of user creation.                      |
+| `updatedAt`         | `timestamp`                           | Not Null, `default now()`                    | Timestamp of last user update.                   |
+*Relations: Has many `connectedChannels`, `products`, `orders` (as seller/agent), `chats` (as agent).*
 
-### 2.2. `ConnectedChannels`
+**Table: `connectedChannels`**
+Manages connections to various external platforms for each user.
 
-Represents the social media/messaging accounts linked by a User.
+| Column               | Type                 | Constraints                                  | Description                                         |
+|----------------------|----------------------|----------------------------------------------|-----------------------------------------------------|
+| `channelId`          | `uuid`               | PK, `default gen_random_uuid()`              | Unique identifier for the connected channel.        |
+| `userId`             | `uuid`               | FK to `users.userId`, Not Null               | Owning user.                                        |
+| `platformType`       | `platformTypeEnum`   | Not Null                                     | Type of platform (WHATSAPP, SHOPIFY, etc.).         |
+| `platformSpecificId` | `text`               |                                              | ID from the external platform.                      |
+| `channelName`        | `text`               |                                              | User-defined name for the channel.                  |
+| `accessToken`        | `text`               |                                              | Encrypted access token for the platform API.        |
+| `refreshToken`       | `text`               |                                              | Encrypted refresh token.                            |
+| `tokenExpiresAt`     | `timestamp`          |                                              | Expiry time for the access token.                   |
+| `scopes`             | `text[]`             |                                              | OAuth scopes granted.                               |
+| `metadata`           | `jsonb`              |                                              | Other platform-specific settings.                   |
+| `isActive`           | `boolean`            | `default true`                               | Whether the channel connection is active.           |
+| `createdAt`          | `timestamp`          | Not Null, `default now()`                    | Timestamp of channel creation.                      |
+| `updatedAt`          | `timestamp`          | Not Null, `default now()`                    | Timestamp of last channel update.                   |
+*Relations: Belongs to `user`. Has many `customers`, `orders`, `chats`.*
 
-| Column                 | Type                                                                 | Constraints / Notes                                      |
-|------------------------|----------------------------------------------------------------------|----------------------------------------------------------|
-| `channel_id`           | STRING / UUID                                                        | Primary Key (PK)                                         |
-| `user_id`              | STRING / UUID                                                        | Foreign Key (FK) to `Users.user_id`                      |
-| `platform_type`        | ENUM ('FACEBOOK_PAGE', 'INSTAGRAM_BUSINESS', 'LINKEDIN_PAGE', 'TWITTER_PROFILE') | Type of the connected platform                           |
-| `platform_specific_id` | STRING                                                               | Unique ID of the page/account on the external platform |
-| `channel_name`         | STRING                                                               | User-friendly name for the channel                       |
-| `access_token`         | STRING                                                               | Encrypted, for API access                                |
-| `refresh_token`        | STRING                                                               | Encrypted, Nullable (if applicable)                      |
-| `token_expires_at`     | DATETIME                                                             | Nullable (if applicable)                                 |
-| `is_active`            | BOOLEAN                                                              | To enable/disable bot on this channel                    |
-| `created_at`           | DATETIME                                                             | Timestamp of creation                                    |
-| `updated_at`           | DATETIME                                                             | Timestamp of last update                                 |
+**Table: `products`**
+Stores product information for users.
 
-### 2.3. `Customers`
+| Column        | Type          | Constraints                                  | Description                                      |
+|---------------|---------------|----------------------------------------------|--------------------------------------------------|
+| `productId`   | `uuid`        | PK, `default gen_random_uuid()`              | Unique identifier for the product.               |
+| `userId`      | `uuid`        | FK to `users.userId`, Not Null               | User who owns the product.                       |
+| `name`        | `text`        | Not Null                                     | Product name.                                    |
+| `description` | `text`        |                                              | Product description.                             |
+| `price`       | `numeric(10,2)` | Not Null                                     | Product price.                                   |
+| `currency`    | `text`        | Not Null                                     | Currency code (e.g., "USD").                     |
+| `sku`         | `text`        | Unique                                       | Stock Keeping Unit.                              |
+| `imageUrl`    | `text`        |                                              | URL to the product image.                        |
+| `isAvailable` | `boolean`     | `default true`                               | Whether the product is available for sale.       |
+| `createdAt`   | `timestamp`   | Not Null, `default now()`                    | Timestamp of product creation.                   |
+| `updatedAt`   | `timestamp`   | Not Null, `default now()`                    | Timestamp of last product update.                |
+*Relations: Belongs to `user`. Has many `orderItems`.*
 
-Represents the end-users interacting with the bot on a specific channel.
+**Table: `customers`**
+Represents end-customers interacting via connected channels.
 
-| Column                 | Type          | Constraints / Notes                                               |
-|------------------------|---------------|-------------------------------------------------------------------|
-| `customer_id`          | STRING / UUID | Primary Key (PK)                                                  |
-| `channel_id`           | STRING / UUID | Foreign Key (FK) to `ConnectedChannels.channel_id`                |
-| `platform_customer_id` | STRING        | Unique ID of the customer on that specific platform (e.g., PSID)  |
-| `full_name`            | STRING        | Optional, if retrievable from the platform                      |
-| `profile_picture_url`  | STRING        | Optional                                                          |
-| `first_seen_at`        | DATETIME      | Timestamp of first interaction                                    |
-| `last_seen_at`         | DATETIME      | Timestamp of last interaction                                     |
+| Column               | Type        | Constraints                                  | Description                                      |
+|----------------------|-------------|----------------------------------------------|--------------------------------------------------|
+| `customerId`         | `uuid`      | PK, `default gen_random_uuid()`              | Unique identifier for the customer.              |
+| `channelId`          | `uuid`      | FK to `connectedChannels.channelId`, Not Null| Channel through which customer interacted.       |
+| `platformCustomerId` | `text`      | Not Null                                     | Customer ID from the external platform.          |
+| `fullName`           | `text`      |                                              | Customer's full name.                            |
+| `email`              | `text`      |                                              | Customer's email address.                        |
+| `phone`              | `text`      |                                              | Customer's phone number.                         |
+| `avatarUrl`          | `text`      |                                              | URL to customer's avatar.                        |
+| `firstSeenAt`        | `timestamp` | Not Null, `default now()`                    | Timestamp of first interaction.                  |
+| `lastSeenAt`         | `timestamp` | Not Null, `default now()`                    | Timestamp of last interaction.                   |
+| `metadata`           | `jsonb`     |                                              | Additional customer data.                        |
+*Relations: Belongs to `connectedChannel`. Has many `orders`, `chats`.*
 
-### 2.4. `Products`
+**Table: `orders`**
+Tracks customer orders.
 
-Items/services offered by the User's business.
+| Column            | Type                | Constraints                                  | Description                                      |
+|-------------------|---------------------|----------------------------------------------|--------------------------------------------------|
+| `orderId`         | `uuid`              | PK, `default gen_random_uuid()`              | Unique identifier for the order.                 |
+| `customerId`      | `uuid`              | FK to `customers.customerId`, Not Null       | Customer who placed the order.                   |
+| `channelId`       | `uuid`              | FK to `connectedChannels.channelId`, Not Null| Channel through which order was placed.          |
+| `userId`          | `uuid`              | FK to `users.userId`, Not Null               | User/business fulfilling the order.              |
+| `platformOrderId` | `text`              |                                              | Order ID from the external platform, if any.     |
+| `orderStatus`     | `orderStatusEnum`   | Not Null, `default 'PENDING'`                | Status of the order.                             |
+| `totalAmount`     | `numeric(10,2)`     | Not Null                                     | Total amount of the order.                       |
+| `currency`        | `text`              | Not Null                                     | Currency code for the order.                     |
+| `shippingAddress` | `jsonb`             |                                              | Shipping address details.                        |
+| `billingAddress`  | `jsonb`             |                                              | Billing address details.                         |
+| `createdAt`       | `timestamp`         | Not Null, `default now()`                    | Timestamp of order creation.                     |
+| `updatedAt`       | `timestamp`         | Not Null, `default now()`                    | Timestamp of last order update.                  |
+*Relations: Belongs to `customer`, `connectedChannel`, `user`. Has many `orderItems`.*
 
-| Column         | Type          | Constraints / Notes                               |
-|----------------|---------------|---------------------------------------------------|
-| `product_id`   | STRING / UUID | Primary Key (PK)                                  |
-| `user_id`      | STRING / UUID | Foreign Key (FK) to `Users.user_id`               |
-| `name`         | STRING        |                                                   |
-| `description`  | TEXT          |                                                   |
-| `price`        | DECIMAL       |                                                   |
-| `currency`     | STRING        | e.g., 'USD', 'EUR'                                |
-| `sku`          | STRING        | Optional Stock Keeping Unit                       |
-| `image_url`    | STRING        | Optional                                          |
-| `is_available` | BOOLEAN       |                                                   |
-| `created_at`   | DATETIME      | Timestamp of creation                             |
-| `updated_at`   | DATETIME      | Timestamp of last update                          |
+**Table: `orderItems`**
+Line items for an order.
 
-### 2.5. `Orders`
+| Column               | Type            | Constraints                                  | Description                                      |
+|----------------------|-----------------|----------------------------------------------|--------------------------------------------------|
+| `orderItemId`        | `uuid`          | PK, `default gen_random_uuid()`              | Unique identifier for the order item.            |
+| `orderId`            | `uuid`          | FK to `orders.orderId`, Not Null             | Order this item belongs to.                      |
+| `productId`          | `uuid`          | FK to `products.productId`, Not Null         | Product associated with this item.               |
+| `quantity`           | `integer`       | Not Null                                     | Quantity of the product ordered.                 |
+| `priceAtPurchase`    | `numeric(10,2)` | Not Null                                     | Price of the product at the time of purchase.    |
+| `currencyAtPurchase` | `text`          | Not Null                                     | Currency at the time of purchase.                |
+*Relations: Belongs to `order`, `product`.*
 
-Records of purchases made by Customers.
+**Table: `chats`**
+Represents chat conversations.
 
-| Column             | Type                                                    | Constraints / Notes                               |
-|--------------------|---------------------------------------------------------|---------------------------------------------------|
-| `order_id`         | STRING / UUID                                           | Primary Key (PK)                                  |
-| `customer_id`      | STRING / UUID                                           | Foreign Key (FK) to `Customers.customer_id`       |
-| `channel_id`       | STRING / UUID                                           | Foreign Key (FK) to `ConnectedChannels.channel_id`|
-| `user_id`          | STRING / UUID                                           | Foreign Key (FK) to `Users.user_id` (denormalized)|
-| `order_status`     | ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED') |                                           |
-| `total_amount`     | DECIMAL                                                 |                                                   |
-| `currency`         | STRING                                                  |                                                   |
-| `shipping_address` | JSON / TEXT                                             | Could be JSON or link to separate address table   |
-| `billing_address`  | JSON / TEXT                                             | Could be JSON or link to separate address table   |
-| `created_at`       | DATETIME                                                | Timestamp of creation                             |
-| `updated_at`       | DATETIME                                                | Timestamp of last update                          |
+| Column           | Type             | Constraints                                  | Description                                      |
+|------------------|------------------|----------------------------------------------|--------------------------------------------------|
+| `chatId`         | `uuid`           | PK, `default gen_random_uuid()`              | Unique identifier for the chat.                  |
+| `customerId`     | `uuid`           | FK to `customers.customerId`, Not Null       | Customer involved in the chat.                   |
+| `channelId`      | `uuid`           | FK to `connectedChannels.channelId`, Not Null| Channel on which chat occurred.                  |
+| `userId`         | `uuid`           | FK to `users.userId` (nullable)              | Assigned agent/user.                             |
+| `platformChatId` | `text`           |                                              | Chat ID from the external platform.              |
+| `status`         | `chatStatusEnum` | Not Null, `default 'OPEN'`                   | Status of the chat.                              |
+| `startedAt`      | `timestamp`      | Not Null, `default now()`                    | Timestamp when chat started.                     |
+| `lastMessageAt`  | `timestamp`      |                                              | Timestamp of the last message in the chat.       |
+*Relations: Belongs to `customer`, `connectedChannel`, `user` (optional). Has many `messages`.*
 
-### 2.6. `OrderItems`
+**Table: `messages`**
+Individual messages within a chat.
 
-Links Products to Orders (many-to-many relationship).
+| Column              | Type                      | Constraints                                  | Description                                      |
+|---------------------|---------------------------|----------------------------------------------|--------------------------------------------------|
+| `messageId`         | `uuid`                    | PK, `default gen_random_uuid()`              | Unique identifier for the message.               |
+| `chatId`            | `uuid`                    | FK to `chats.chatId`, Not Null               | Chat this message belongs to.                    |
+| `platformMessageId` | `text`                    | Unique                                       | Message ID from the external platform.           |
+| `senderType`        | `messageSenderTypeEnum`   | Not Null                                     | Who sent the message (CUSTOMER, AGENT, SYSTEM).  |
+| `contentType`       | `messageContentTypeEnum`  | Not Null, `default 'TEXT'`                   | Type of message content (TEXT, IMAGE, etc.).     |
+| `content`           | `text`                    | Not Null                                     | Message content (text or URL for media).         |
+| `metadata`          | `jsonb`                   |                                              | Additional message data.                         |
+| `timestamp`         | `timestamp`               | Not Null, `default now()`                    | Timestamp when message was sent/received.        |
+*Relations: Belongs to `chat`.*
 
-| Column                 | Type          | Constraints / Notes                               |
-|------------------------|---------------|---------------------------------------------------|
-| `order_item_id`        | STRING / UUID | Primary Key (PK)                                  |
-| `order_id`             | STRING / UUID | Foreign Key (FK) to `Orders.order_id`             |
-| `product_id`           | STRING / UUID | Foreign Key (FK) to `Products.product_id`         |
-| `quantity`             | INTEGER       |                                                   |
-| `price_at_purchase`    | DECIMAL       | Price at the time of sale                         |
-| `currency_at_purchase` | STRING        | Currency at the time of sale                      |
+### 1.2. Enum Types
 
-### 2.7. `Chats`
+The schema defines several PostgreSQL enum types for consistency:
 
-Represents a conversation thread with a Customer on a Channel.
+*   `platformTypeEnum`: For `connectedChannels.platformType` (e.g., 'WHATSAPP', 'INSTAGRAM', 'SHOPIFY')
+*   `loginProviderEnum`: For `users.loginProvider` (e.g., 'EMAIL', 'GOOGLE', 'FACEBOOK')
+*   `orderStatusEnum`: For `orders.orderStatus` (e.g., 'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED')
+*   `chatStatusEnum`: For `chats.status` (e.g., 'OPEN', 'PENDING', 'RESOLVED', 'CLOSED')
+*   `messageSenderTypeEnum`: For `messages.senderType` (e.g., 'CUSTOMER', 'AGENT', 'SYSTEM')
+*   `messageContentTypeEnum`: For `messages.contentType` (e.g., 'TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'FILE', 'LOCATION', 'STICKER')
 
-| Column            | Type          | Constraints / Notes                               |
-|-------------------|---------------|---------------------------------------------------|
-| `chat_id`         | STRING / UUID | Primary Key (PK)                                  |
-| `customer_id`     | STRING / UUID | Foreign Key (FK) to `Customers.customer_id`       |
-| `channel_id`      | STRING / UUID | Foreign Key (FK) to `ConnectedChannels.channel_id`|
-| `user_id`         | STRING / UUID | Foreign Key (FK) to `Users.user_id` (denormalized)|
-| `started_at`      | DATETIME      | Timestamp when chat started                       |
-| `last_message_at` | DATETIME      | Timestamp of the last message in the chat         |
-| `status`          | ENUM ('OPEN', 'CLOSED_BY_BOT', 'CLOSED_BY_AGENT', 'ARCHIVED') | Optional, status of the chat thread             |
-
-### 2.8. `Messages`
-
-Individual messages within a Chat.
-
-| Column                | Type                                                         | Constraints / Notes                                      |
-|-----------------------|--------------------------------------------------------------|----------------------------------------------------------|
-| `message_id`          | STRING / UUID                                                | Primary Key (PK)                                         |
-| `chat_id`             | STRING / UUID                                                | Foreign Key (FK) to `Chats.chat_id`                      |
-| `sender_type`         | ENUM ('BOT', 'CUSTOMER', 'AGENT')                            | Indicates who sent the message                           |
-| `content_type`        | ENUM ('TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'FILE', 'QUICK_REPLY', 'CAROUSEL') | Type of message content                          |
-| `content`             | TEXT / JSON                                                  | Actual message content (TEXT or JSON for structured)     |
-| `timestamp`           | DATETIME                                                     | Timestamp of when the message was sent/received          |
-| `platform_message_id` | STRING                                                       | Optional, ID of the message from the source platform     |
-
-## 3. Entity Relationship Diagram (Mermaid)
-
-Below is a placeholder for the visual ERD. Generate `databaseMap.png` from the Mermaid code provided and ensure it is in the same directory as this file.
-
-![Database ERD](assets/dbArchitecture.png)
-
-Use the following Mermaid code to generate a visual ERD. You can use an online editor like the [Mermaid Live Editor](https://mermaid.live) or a VS Code extension.
+### 1.3. Mermaid Diagram (Entity Relationship Diagram)
 
 ```mermaid
 erDiagram
-    USERS ||--o{ CONNECTED_CHANNELS : "manages"
-    USERS ||--o{ PRODUCTS : "defines"
-    USERS ||--o{ ORDERS : "views (via channels)"
-    USERS ||--o{ CHATS : "views (via channels)"
+    users ||--o{ connectedChannels : "has"
+    users ||--o{ products : "sells"
+    users ||--o{ orders : "fulfills"
+    users ||--o{ chats : "handles"
 
-    CONNECTED_CHANNELS ||--o{ CUSTOMERS : "interacts with"
-    CONNECTED_CHANNELS ||--o{ ORDERS : "originates from"
-    CONNECTED_CHANNELS ||--o{ CHATS : "occurs on"
-    CONNECTED_CHANNELS }|..|{ USERS : "belongs to"
+    connectedChannels ||--o{ customers : "has"
+    connectedChannels ||--o{ orders : "via"
+    connectedChannels ||--o{ chats : "on"
 
-    CUSTOMERS ||--o{ ORDERS : "places"
-    CUSTOMERS ||--o{ CHATS : "participates in"
-    CUSTOMERS }|..|{ CONNECTED_CHANNELS : "via"
+    products ||--o{ orderItems : "included in"
 
-    PRODUCTS ||--o{ ORDER_ITEMS : "included in"
-    PRODUCTS }|..|{ USERS : "defined by"
+    customers ||--o{ orders : "places"
+    customers ||--o{ chats : "participates in"
 
-    ORDERS ||--o{ ORDER_ITEMS : "contains"
-    ORDERS }|..|{ CUSTOMERS : "placed by"
-    ORDERS }|..|{ CONNECTED_CHANNELS : "through"
-    ORDERS }|..|{ USERS : "owned by (user)"
+    orders ||--o{ orderItems : "contains"
 
-    CHATS ||--o{ MESSAGES : "consists of"
-    CHATS }|..|{ CUSTOMERS : "with"
-    CHATS }|..|{ CONNECTED_CHANNELS : "on"
-    CHATS }|..|{ USERS : "owned by (user)"
+    chats ||--o{ messages : "contains"
 
-    ORDER_ITEMS }|..|{ ORDERS : "part of"
-    ORDER_ITEMS }|..|{ PRODUCTS : "of"
-
-    MESSAGES }|..|{ CHATS : "belongs to"
-
-    USERS {
-        string user_id PK
-        string email "nullable"
-        string password_hash "nullable"
-        string business_name
-        string login_provider "ENUM('EMAIL', 'GOOGLE', ...)"
-        string provider_user_id "nullable"
-        datetime created_at
-        datetime updated_at
+    users {
+        UUID userId PK
+        Text email UK
+        Text hashedPassword
+        loginProviderEnum loginProvider
+        Text providerAccountId
+        Text businessName
+        Text avatarUrl
+        Timestamp createdAt
+        Timestamp updatedAt
     }
 
-    CONNECTED_CHANNELS {
-        string channel_id PK
-        string user_id FK
-        string platform_type "ENUM('FACEBOOK_PAGE', ...)"
-        string platform_specific_id
-        string channel_name
-        string access_token_encrypted
-        boolean is_active
-        datetime created_at
-        datetime updated_at
+    connectedChannels {
+        UUID channelId PK
+        UUID userId FK
+        platformTypeEnum platformType
+        Text platformSpecificId
+        Text channelName
+        Text accessToken
+        Text refreshToken
+        Timestamp tokenExpiresAt
+        Text[] scopes
+        JSONB metadata
+        Boolean isActive
+        Timestamp createdAt
+        Timestamp updatedAt
     }
 
-    CUSTOMERS {
-        string customer_id PK
-        string channel_id FK
-        string platform_customer_id
-        string full_name "nullable"
-        datetime first_seen_at
-        datetime last_seen_at
+    products {
+        UUID productId PK
+        UUID userId FK
+        Text name
+        Text description
+        Numeric price
+        Text currency
+        Text sku UK
+        Text imageUrl
+        Boolean isAvailable
+        Timestamp createdAt
+        Timestamp updatedAt
     }
 
-    PRODUCTS {
-        string product_id PK
-        string user_id FK
-        string name
-        string description
-        decimal price
-        string currency
-        boolean is_available
-        datetime created_at
-        datetime updated_at
+    customers {
+        UUID customerId PK
+        UUID channelId FK
+        Text platformCustomerId
+        Text fullName
+        Text email
+        Text phone
+        Text avatarUrl
+        Timestamp firstSeenAt
+        Timestamp lastSeenAt
+        JSONB metadata
     }
 
-    ORDERS {
-        string order_id PK
-        string customer_id FK
-        string channel_id FK
-        string user_id FK
-        string order_status "ENUM('PENDING', ...)"
-        decimal total_amount
-        string currency
-        json shipping_address "nullable"
-        datetime created_at
-        datetime updated_at
+    orders {
+        UUID orderId PK
+        UUID customerId FK
+        UUID channelId FK
+        UUID userId FK
+        Text platformOrderId
+        orderStatusEnum orderStatus
+        Numeric totalAmount
+        Text currency
+        JSONB shippingAddress
+        JSONB billingAddress
+        Timestamp createdAt
+        Timestamp updatedAt
     }
 
-    ORDER_ITEMS {
-        string order_item_id PK
-        string order_id FK
-        string product_id FK
-        int quantity
-        decimal price_at_purchase
+    orderItems {
+        UUID orderItemId PK
+        UUID orderId FK
+        UUID productId FK
+        Integer quantity
+        Numeric priceAtPurchase
+        Text currencyAtPurchase
     }
 
-    CHATS {
-        string chat_id PK
-        string customer_id FK
-        string channel_id FK
-        string user_id FK
-        datetime started_at
-        datetime last_message_at
+    chats {
+        UUID chatId PK
+        UUID customerId FK
+        UUID channelId FK
+        UUID userId FK "nullable"
+        Text platformChatId
+        chatStatusEnum status
+        Timestamp startedAt
+        Timestamp lastMessageAt
     }
 
-    MESSAGES {
-        string message_id PK
-        string chat_id FK
-        string sender_type "ENUM('BOT', 'CUSTOMER')"
-        string content_type "ENUM('TEXT', ...)"
-        text content
-        datetime timestamp
+    messages {
+        UUID messageId PK
+        UUID chatId FK
+        Text platformMessageId UK
+        messageSenderTypeEnum senderType
+        messageContentTypeEnum contentType
+        Text content
+        JSONB metadata
+        Timestamp timestamp
     }
 ```
+This diagram provides a visual overview of the table relationships.
 
-## 4. Key Considerations
+---
 
-*   **Scalability:** The `ConnectedChannels` table is designed to accommodate new platform types.
-*   **Data Integrity:** Foreign keys are used to maintain relationships between tables.
-*   **Authentication:** The `Users` table supports both direct email/password and third-party OAuth provider logins.
-*   **Customer Uniqueness:** A `Customer` is unique per `channel_id` and their `platform_customer_id`. A global customer identity across channels is a potential future enhancement.
-*   **Message Content:** The `Messages.content` field can store simple text or structured JSON for rich message types.
-*   **Denormalization:** `user_id` is included in `Orders` and `Chats` for easier querying by the business owner, though the primary link is through `channel_id`.
+## 2. Backend Services Architecture
 
-This architecture provides a solid foundation for the multi-channel AI bot service.
+The backend services are responsible for handling business logic and data persistence. They are designed to be modular and interact with the database via Drizzle ORM.
+
+### 2.1. Directory Structure
+
+Services are organized within the `backend/services/` directory. Each entity has its own subdirectory:
+
+```
+backend/
+└── services/
+    ├── [entityName]/
+    │   ├── [entityName].service.ts  // Contains business logic and database operations
+    │   └── [entityName].types.ts    // Contains TypeScript type definitions for the entity
+    ├── users/
+    │   ├── users.service.ts
+    │   └── users.types.ts
+    ├── products/
+    │   ├── products.service.ts
+    │   └── products.types.ts
+    ├── channels/
+    │   ├── channels.service.ts
+    │   └── channels.types.ts
+    ├── customers/
+    │   ├── customers.service.ts
+    │   └── customers.types.ts
+    ├── orders/
+    │   ├── orders.service.ts
+    │   └── orders.types.ts
+    ├── chats/
+    │   ├── chats.service.ts
+    │   └── chats.types.ts
+    └── messages/
+        ├── messages.service.ts
+        └── messages.types.ts
+```
+
+### 2.2. Service Files (`*.service.ts`)
+
+*   **Purpose:** Encapsulate all business logic related to a specific entity. This includes creating, reading, updating, and deleting (CRUD) operations, as well as any other entity-specific logic.
+*   **Database Interaction:** Service files directly interact with the database using the Drizzle ORM client (`db` imported from `@/db`).
+*   **Structure:** Each service is implemented as a class (e.g., `UsersService`) with methods corresponding to various operations. An instance of the service is usually exported for use in API route handlers.
+*   **Example Operations:** `createUser`, `getUserById`, `getAllUsers`, `updateUser`, `deleteUser`.
+*   **Relational Data:** Services handle fetching related data (e.g., a user's orders) using Drizzle's relational query capabilities (`db.query.[entity].findFirst/findMany({ with: { ... } })`).
+*   **Transactions:** For operations involving multiple database writes (e.g., creating an order and its items), Drizzle transactions (`db.transaction(async (tx) => { ... })`) are used to ensure atomicity.
+
+### 2.3. Type Definition Files (`*.types.ts`)
+
+*   **Purpose:** Define all TypeScript types related to an entity. This ensures type safety throughout the application.
+*   **Core Types:**
+    *   `Entity`: Derived from the Drizzle schema using `InferSelectModel<typeof schema.[entityTable]>`. Represents the shape of data retrieved from the database.
+    *   `NewEntity`: Derived from the Drizzle schema using `InferInsertModel<typeof schema.[entityTable]>`. Represents the shape of data for creating new records.
+*   **Custom Types:**
+    *   `CreateEntityData`: Defines the data structure required to create a new entity (often an `Omit` of `NewEntity` to exclude auto-generated fields like `id`, `createdAt`).
+    *   `UpdateEntityData`: Defines the data structure for updating an entity (often a `Partial<Omit<...>>`).
+    *   `GetEntityByIdOptions`, `GetAllEntitiesOptions`: Define options for fetching entities, including pagination, filtering, and inclusion of related data.
+    *   `EntityFilterOptions`: Defines specific filter criteria for querying entities.
+    *   `EntityWithIncludes`: Defines the shape of an entity when related data is included.
+
+### 2.4. Database Setup (`db/index.ts`)
+
+*   Initializes and exports the Drizzle ORM client instance (`db`).
+*   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
+*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+
+### 2.5. ESLint Configuration (`eslint.config.mjs`)
+
+*   The `@typescript-eslint/no-unused-vars` rule has been globally disabled (`"off"`).
+*   **Reasoning:** Drizzle ORM's relational query system often requires importing schema table objects (e.g., `import { users, orders } from '@/db/schema'`) into service files for type inference and query building, even if these imported table objects are not explicitly used as standalone variables within the service file's code. Disabling this rule prevents ESLint errors for these legitimate, Drizzle-specific use cases. This also applies to type definition files (`*.types.ts`) where schema objects might be imported for type derivation but not directly used as values.
+
+## 3. Next.js API Routes Architecture (App Router)
+
+API routes are built using Next.js App Router conventions, residing in the `app/api/` directory.
+
+### 3.1. Directory Structure
+
+API routes are organized by entity, following RESTful patterns:
+
+```
+app/
+└── api/
+    ├── [entityName]/
+    │   ├── route.ts                     // Handles /api/[entityName] (e.g., GET all, POST create)
+    │   └── [entityId]/                  // Next.js convention for dynamic segments
+    │       └── route.ts                 // Handles /api/[entityName]/[entityId] (e.g., GET one, PUT update, DELETE one)
+    ├── users/
+    │   ├── route.ts
+    │   └── [userId]/
+    │       └── route.ts
+    ├── products/
+    │   ├── route.ts
+    │   └── [productId]/
+    │       └── route.ts
+    ├── channels/
+    │   ├── route.ts
+    │   └── [channelId]/
+    │       └── route.ts
+    ├── customers/
+    │   ├── route.ts
+    │   └── [customerId]/
+    │       └── route.ts
+    ├── orders/
+    │   ├── route.ts
+    │   └── [orderId]/
+    │       └── route.ts
+    ├── chats/
+    │   ├── route.ts
+    │   └── [chatId]/
+    │       ├── route.ts
+    │       └── messages/                // Sub-resource example: messages for a chat
+    │           └── route.ts             // Handles /api/chats/[chatId]/messages
+    └── messages/
+        └── [messageId]/
+            └── route.ts                 // Handles /api/messages/[messageId] (e.g., for updating/deleting a specific message)
+```
+
+### 3.2. Route Handlers (`route.ts`)
+
+*   **HTTP Methods:** Each `route.ts` file exports async functions corresponding to HTTP methods (e.g., `export async function GET(request: NextRequest, { params }) { ... }`, `POST`, `PUT`, `DELETE`).
+*   **Request & Response:** Utilize `NextRequest` for accessing request details and `NextResponse.json()` for sending JSON responses with appropriate status codes.
+*   **Service Integration:** Route handlers call methods from the corresponding backend service (e.g., `usersService.createUser(...)`).
+*   **Input Validation:**
+    *   Request bodies, query parameters, and path parameters will be validated using Zod schemas.
+    *   Zod schemas will be defined either co-located with routes or in a shared validation module.
+*   **Error Handling:**
+    *   `try...catch` blocks are used to handle errors from service calls or validation.
+    *   Zod validation errors return a `400 Bad Request` with error details.
+    *   Other server-side errors return a `500 Internal Server Error` with a generic message, and actual errors are logged server-side.
+    *   Not Found errors (e.g., for `GET /api/entity/[id]`) return a `404 Not Found`.
+*   **Authentication & Authorization:** (Conceptual) Protected routes would typically involve middleware or checks at the beginning of each handler to verify user authentication and authorization. This is not yet implemented but is a key consideration.
+
+### 3.3. Planned API Endpoints (Summary)
+
+For each entity (users, products, channels, customers, orders, chats, messages), the following general API endpoints are planned:
+
+*   **`POST /api/[entity]`**: Create a new entity.
+*   **`GET /api/[entity]`**: Get a list of entities (with pagination and filtering).
+*   **`GET /api/[entity]/[id]`**: Get a single entity by its ID.
+*   **`PUT /api/[entity]/[id]`**: Update an entity by its ID.
+*   **`DELETE /api/[entity]/[id]`**: Delete an entity by its ID.
+
+Specific sub-resources, like messages within a chat (`/api/chats/[chatId]/messages`), will also be implemented.
+
+This plan provides a foundation for building robust and maintainable API endpoints.
