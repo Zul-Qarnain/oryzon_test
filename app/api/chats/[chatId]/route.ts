@@ -6,7 +6,7 @@ import { chatStatusEnum } from '@/db/schema';
 const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
   'customer',
   'connectedChannel',
-  'user',
+  // 'user', // userId removed from chats
   'messages',
 ];
 

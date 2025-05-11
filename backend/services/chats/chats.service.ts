@@ -32,7 +32,7 @@ export class ChatsService {
       with: {
         customer: options?.include?.customer ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
-        user: options?.include?.user ? true : undefined,
+        // user: options?.include?.user ? true : undefined, // userId removed from chats
         messages: options?.include?.messages 
           ? { 
               limit: typeof options.include.messages === 'boolean' ? undefined : options.include.messages.limit,
@@ -67,9 +67,9 @@ export class ChatsService {
     if (filter?.channelId) {
       conditions.push(eq(chats.channelId, filter.channelId));
     }
-    if (filter?.userId) {
-      conditions.push(eq(chats.userId, filter.userId));
-    }
+    // if (filter?.userId) { // userId removed from chats
+    //   conditions.push(eq(chats.userId, filter.userId));
+    // }
     if (filter?.status) {
       conditions.push(eq(chats.status, filter.status));
     }
@@ -93,7 +93,7 @@ export class ChatsService {
       with: {
         customer: options?.include?.customer ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
-        user: options?.include?.user ? true : undefined,
+        // user: options?.include?.user ? true : undefined, // userId removed from chats
         messages: options?.include?.messages 
           ? { 
               limit: typeof options.include.messages === 'boolean' ? undefined : options.include.messages.limit,
@@ -156,10 +156,10 @@ export class ChatsService {
   }
 
   async handleNewMessage(
-    messageContent: string,
+    messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId'| 'timestamp'|"platformMessageId">,
     customerId: string,
-    connectedPageID: string,
-    userId:string // Assuming this is the channelId
+    connectedPageID: string
+    // userId:string // userId removed from chats
   ): Promise<(typeof messages.$inferSelect)[]> {
     // 1. Find the chat
     const foundChat = await db.query.chats.findFirst({
@@ -175,8 +175,8 @@ export class ChatsService {
       // If chat not found, create a new one
       const newChat = await this.createChat({
       customerId: customerId,
-      channelId: connectedPageID, 
-      userId: userId, // Assuming this is the userId
+      channelId: connectedPageID,
+      // userId: userId, // userId removed from chats
       // status will default to 'OPEN' as per createChat method
       // startedAt will be set by the database default
       });
@@ -185,18 +185,13 @@ export class ChatsService {
       chatId = foundChat.chatId;
     }
 
-   
-
     // 2. Create a new message entity
     // Assuming senderType is 'CUSTOMER' and contentType is 'TEXT' for new messages via this handler
     await db
       .insert(messages)
       .values({
         chatId: chatId,
-        senderType: 'CUSTOMER', // From messageSenderTypeEnum
-        contentType: 'TEXT', // From messageContentTypeEnum
-        content: messageContent,
-        timestamp: new Date(),
+        ...messageContent,
       })
       .returning(); // .returning() to get the new message if needed, though not used here
 

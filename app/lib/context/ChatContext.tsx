@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Chat, ChatWithIncludes } from "@/backend/services/chats/chats.types";
-import type { ChatFilterOptions as ChatFilter } from "@/backend/services/chats/chats.types";
+import { Chat, ChatWithIncludes, ChatFilterOptions } from "@/backend/services/chats/chats.types";
+// import type { ChatFilterOptions as ChatFilter } from "@/backend/services/chats/chats.types"; // userId removed, using ChatFilterOptions directly
 
 export interface PaginationOptions {
   limit?: number;
@@ -14,9 +14,9 @@ export interface ChatContextType {
   chat_loading: boolean;
   error_chat: string | null;
   fetchChat: (chatId: string, options?: { include?: string }) => Promise<void>;
-  fetchChats: (options?: { filter?: ChatFilter; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createChat: (data: Partial<Chat>) => Promise<ChatWithIncludes | null>;
-  updateChat: (chatId: string, data: Partial<Chat>) => Promise<ChatWithIncludes | null>;
+  fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<void>;
+  createChat: (data: Partial<Omit<Chat, 'userId'>>) => Promise<ChatWithIncludes | null>;
+  updateChat: (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => Promise<ChatWithIncludes | null>;
   deleteChat: (chatId: string) => Promise<boolean>;
   cleanError_Chat: () => void;
 }
@@ -51,7 +51,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchChats = useCallback(
-    async (options?: { filter?: ChatFilter; pagination?: PaginationOptions; include?: string }) => {
+    async (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => {
       setChatLoading(true);
       setErrorChat(null);
       try {
@@ -87,7 +87,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     []
   );
 
-  const createChat = useCallback(async (data: Partial<Chat>) => {
+  const createChat = useCallback(async (data: Partial<Omit<Chat, 'userId'>>) => {
     setChatLoading(true);
     setErrorChat(null);
     try {
@@ -111,7 +111,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const updateChat = useCallback(async (chatId: string, data: Partial<Chat>) => {
+  const updateChat = useCallback(async (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => {
     setChatLoading(true);
     setErrorChat(null);
     try {

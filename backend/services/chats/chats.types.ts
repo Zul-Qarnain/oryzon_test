@@ -13,7 +13,7 @@ export type NewChat = InferInsertModel<typeof chats>;
 export interface ChatIncludeOptions {
   customer?: boolean;
   connectedChannel?: boolean;
-  user?: boolean; // The business user
+  // user?: boolean; // The business user // userId removed from chats
   messages?: { limit?: number; offset?: number; orderBy?: { field: keyof Message; direction: 'asc' | 'desc' } } | boolean;
 }
 
@@ -26,15 +26,15 @@ export interface GetChatByIdOptions {
 export interface GetAllChatsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Chat, 'customerId' | 'channelId' | 'userId' | 'status'>>;
+  filter?: Partial<Pick<Chat, 'customerId' | 'channelId' | 'status'>>; // userId removed from chats
   include?: ChatIncludeOptions;
 }
 
 // Data for creating a new Chat
-export type CreateChatData = Omit<NewChat, 'chatId' | 'startedAt' | 'lastMessageAt'> & {
+export type CreateChatData = Omit<NewChat, 'chatId' | 'startedAt' | 'lastMessageAt' | 'userId'> & { // userId removed from chats
   customerId: Customer['customerId'];
   channelId: ConnectedChannel['channelId'];
-  userId: User['userId'];
+  // userId: User['userId']; // userId removed from chats
 };
 
 // Data for updating an existing Chat
@@ -51,7 +51,7 @@ export interface ChatFilterOptions {
   ids?: Chat['chatId'][];
   customerId?: Customer['customerId'];
   channelId?: ConnectedChannel['channelId'];
-  userId?: User['userId'];
+  // userId?: User['userId']; // userId removed from chats
   status?: Chat['status'];
   startedAtBefore?: Date;
   startedAtAfter?: Date;
@@ -63,6 +63,6 @@ export interface ChatFilterOptions {
 export type ChatWithIncludes = Chat & {
   customer?: Customer;
   connectedChannel?: ConnectedChannel;
-  user?: User;
+  // user?: User; // userId removed from chats
   messages?: Message[];
 };

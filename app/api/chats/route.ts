@@ -6,7 +6,7 @@ import { chatStatusEnum } from '@/db/schema';
 const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
   'customer',
   'connectedChannel',
-  'user',
+  // 'user', // userId removed from chats
   'messages',
 ];
 
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     const customerId = getStringFilterParam(searchParams, 'customerId');
     const channelId = getStringFilterParam(searchParams, 'channelId');
-    const userId = getStringFilterParam(searchParams, 'userId');
+    // const userId = getStringFilterParam(searchParams, 'userId'); // userId removed from chats
     const status = getStringFilterParam(searchParams, 'status');
 
     const includeOptions = parseIncludeQuery<ChatIncludeOptions, keyof ChatIncludeOptions>(
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
     if (customerId) options.filter!.customerId = customerId;
     if (channelId) options.filter!.channelId = channelId;
-    if (userId) options.filter!.userId = userId;
+    // if (userId) options.filter!.userId = userId; // userId removed from chats
     if (status) options.filter!.status = status as ChatStatus;
 
     const result = await chatsService.getAllChats(options);

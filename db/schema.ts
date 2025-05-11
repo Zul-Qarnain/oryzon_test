@@ -99,7 +99,6 @@ export const chats = pgTable('chats', {
   chatId: uuid('chat_id').primaryKey().defaultRandom(),
   customerId: uuid('customer_id').notNull().references(() => customers.customerId),
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
-  userId: uuid('user_id').notNull().references(() => users.userId), // Denormalized
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
   status: chatStatusEnum('status').default('OPEN'), // Optional
@@ -120,7 +119,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   connectedChannels: many(connectedChannels),
   products: many(products),
   orders: many(orders), // For easier querying of all orders by a user
-  chats: many(chats), // For easier querying of all chats by a user
+  // chats: many(chats), // For easier querying of all chats by a user // userId was removed from chats
 }));
 
 export const connectedChannelsRelations = relations(connectedChannels, ({ one, many }) => ({
@@ -186,10 +185,10 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     fields: [chats.channelId],
     references: [connectedChannels.channelId],
   }),
-  user: one(users, { // For the denormalized user_id
-    fields: [chats.userId],
-    references: [users.userId],
-  }),
+  // user: one(users, { // For the denormalized user_id // userId was removed from chats
+  //   fields: [chats.userId],
+  //   references: [users.userId],
+  // }),
   messages: many(messages),
 }));
 
