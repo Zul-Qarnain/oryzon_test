@@ -284,6 +284,8 @@ This document lists all backend API endpoints, their query parameters, and possi
   "currency": "string",
   "sku": "string | null",
   "imageUrl": "string | null",
+  "imageId": "string | null",
+  "shortId": "string | null",
   "isAvailable": "boolean",
   "createdAt": "string (ISO date)",
   "updatedAt": "string (ISO date)"
@@ -294,7 +296,7 @@ This document lists all backend API endpoints, their query parameters, and possi
 - **Query Parameters:**
   - `include`: Comma-separated list (`user,orderItems`)
   - `limit`, `offset`: Pagination
-  - `name`, `currency`, `isAvailable`, `userId`: Filtering
+  - `name`, `currency`, `isAvailable`, `userId`, `imageId`, `shortId`: Filtering
 - **Success Response:**  
   - Status: 200  
   `{ "data": [ProductWithIncludes], "total": number }`

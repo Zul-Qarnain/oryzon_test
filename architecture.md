@@ -59,6 +59,8 @@ Stores product information for users.
 | `currency`    | `text`        | Not Null                                     | Currency code (e.g., "USD").                     |
 | `sku`         | `text`        | Unique                                       | Stock Keeping Unit.                              |
 | `imageUrl`    | `text`        |                                              | URL to the product image.                        |
+| `imageId`     | `text`        |                                              | Optional ID for an image associated with the product. |
+| `shortId`     | `text`        |                                              | Optional short identifier for the product.       |
 | `isAvailable` | `boolean`     | `default true`                               | Whether the product is available for sale.       |
 | `createdAt`   | `timestamp`   | Not Null, `default now()`                    | Timestamp of product creation.                   |
 | `updatedAt`   | `timestamp`   | Not Null, `default now()`                    | Timestamp of last product update.                |
@@ -213,6 +215,8 @@ erDiagram
         Text currency
         Text sku UK
         Text imageUrl
+        Text imageId "nullable"
+        Text shortId "nullable"
         Boolean isAvailable
         Timestamp createdAt
         Timestamp updatedAt
