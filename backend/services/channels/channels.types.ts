@@ -26,7 +26,8 @@ export interface GetChannelByIdOptions {
 export interface GetAllChannelsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<ConnectedChannel, 'userId' | 'platformType' | 'isActive' | 'channelName'>>;
+  filter?: Partial<Pick<ConnectedChannel, 'userId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId'>>;
+  orderBy?: keyof ConnectedChannel;
   include?: ChannelIncludeOptions;
 }
 
