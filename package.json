@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.43.1",
     "next": "15.3.2",
