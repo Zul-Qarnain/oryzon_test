@@ -72,6 +72,12 @@ export class ProductsService {
     if (filter?.createdAtAfter) {
       conditions.push(gte(products.createdAt, filter.createdAtAfter));
     }
+    if (filter?.imageId) {
+      conditions.push(eq(products.imageId, filter.imageId));
+    }
+    if (filter?.shortId) {
+      conditions.push(eq(products.shortId, filter.shortId));
+    }
 
     const productsQuery = db.query.products.findMany({
       where: and(...conditions),

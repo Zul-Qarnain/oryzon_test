@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     const currency = getStringFilterParam(searchParams, 'currency');
     const isAvailable = getStringFilterParam(searchParams, 'isAvailable');
     const userId = getStringFilterParam(searchParams, 'userId');
+    const imageId = getStringFilterParam(searchParams, 'imageId');
+    const shortId = getStringFilterParam(searchParams, 'shortId');
 
     const includeOptions = parseIncludeQuery<ProductIncludeOptions, keyof ProductIncludeOptions>(
       includeQuery,
@@ -35,6 +37,8 @@ export async function GET(request: Request) {
     if (currency) options.filter!.currency = currency;
     if (isAvailable !== null && isAvailable !== undefined) options.filter!.isAvailable = isAvailable === 'true';
     if (userId) options.filter!.userId = userId;
+    if (imageId) options.filter!.imageId = imageId;
+    if (shortId) options.filter!.shortId = shortId;
 
     const result = await productsService.getAllProducts(options);
     return new Response(JSON.stringify(result), { status: 200 });

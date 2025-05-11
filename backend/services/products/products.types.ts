@@ -21,7 +21,7 @@ export interface GetProductByIdOptions {
 export interface GetAllProductsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Product, 'name' | 'currency' | 'isAvailable' | 'userId'>>;
+  filter?: Partial<Pick<Product, 'name' | 'currency' | 'isAvailable' | 'userId' | 'imageId' | 'shortId'>>;
   include?: ProductIncludeOptions;
 }
 
@@ -47,6 +47,8 @@ export interface ProductFilterOptions {
   userId?: User['userId'];
   name?: Product['name'];
   isAvailable?: Product['isAvailable'];
+  imageId?: Product['imageId'];
+  shortId?: Product['shortId'];
   minPrice?: number;
   maxPrice?: number;
   currency?: Product['currency'];

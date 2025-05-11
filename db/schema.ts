@@ -65,6 +65,8 @@ export const products = pgTable('products', {
   currency: varchar('currency', { length: 3 }).notNull(), // e.g., 'USD'
   sku: text('sku'), // Optional
   imageUrl: text('image_url'), // Optional
+  imageId: text('image_id'), // Optional
+  shortId: text('short_id'), // Optional, could be used for short links or easier references
   isAvailable: boolean('is_available').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
