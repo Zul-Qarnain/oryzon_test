@@ -154,6 +154,69 @@ export class ChatsService {
     const result = await db.delete(chats).where(inArray(chats.chatId, filter.ids as string[]));
     return { count: result.rowCount ?? 0 };
   }
+
+  async handleNewMessage(
+    messageContent: string,
+    customerId: string,
+    connectedPageID: string,
+    userId:string // Assuming this is the channelId
+  ): Promise<(typeof messages.$inferSelect)[]> {
+    // 1. Find the chat
+    const foundChat = await db.query.chats.findFirst({
+      where: and(
+        eq(chats.customerId, customerId),
+        eq(chats.channelId, connectedPageID),
+      ),
+    });
+
+    let chatId: string;
+
+    if (!foundChat) {
+      // If chat not found, create a new one
+      const newChat = await this.createChat({
+      customerId: customerId,
+      channelId: connectedPageID, 
+      userId: userId, // Assuming this is the userId
+      // status will default to 'OPEN' as per createChat method
+      // startedAt will be set by the database default
+      });
+      chatId = newChat.chatId;
+    } else {
+      chatId = foundChat.chatId;
+    }
+
+   
+
+    // 2. Create a new message entity
+    // Assuming senderType is 'CUSTOMER' and contentType is 'TEXT' for new messages via this handler
+    await db
+      .insert(messages)
+      .values({
+        chatId: chatId,
+        senderType: 'CUSTOMER', // From messageSenderTypeEnum
+        contentType: 'TEXT', // From messageContentTypeEnum
+        content: messageContent,
+        timestamp: new Date(),
+      })
+      .returning(); // .returning() to get the new message if needed, though not used here
+
+    // 3. Update the chat's lastMessageAt timestamp
+    await db
+      .update(chats)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(chats.chatId, chatId));
+
+    // 4. Retrieve and return the last minimum 100 messages for that chat
+    const lastMessages = await db.query.messages.findMany({
+      where: eq(messages.chatId, chatId),
+      orderBy: [desc(messages.timestamp)],
+      limit: 100,
+    });
+
+    // The messages are returned newest first. If chronological order (oldest first) is needed for display,
+    // the client can reverse this array.
+    return lastMessages;
+  }
 }
 
 export const chatsService = new ChatsService();
