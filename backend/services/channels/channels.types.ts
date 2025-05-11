@@ -1,9 +1,9 @@
-import { connectedChannels, users, customers, orders, chats, platformTypeEnum } from '@/db/schema';
+import { connectedChannels, users, customers as customersSchema, orders as ordersSchema, chats as chatsSchema, platformTypeEnum } from '@/db/schema'; // Aliased schema imports to avoid name clashes if types are also named the same
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { User } from '@/backend/services/users/users.types';
-import { Customer } from '@/backend/services/customers/customers.types'; // Placeholder, will be created
-import { Order } from '@/backend/services/orders/orders.types';       // Placeholder, will be created
-import { Chat } from '@/backend/services/chats/chats.types';          // Placeholder, will be created
+import { Customer } from '@/backend/services/customers/customers.types';
+import { Order } from '@/backend/services/orders/orders.types';
+import { Chat } from '@/backend/services/chats/chats.types';
 
 // Base ConnectedChannel type from schema
 export type ConnectedChannel = InferSelectModel<typeof connectedChannels>;
@@ -50,6 +50,7 @@ export interface ChannelFilterOptions {
   userId?: User['userId'];
   platformType?: ConnectedChannel['platformType'];
   isActive?: ConnectedChannel['isActive'];
+  channelName?: ConnectedChannel['channelName']; // Added channelName for filtering
   platformSpecificId?: ConnectedChannel['platformSpecificId'];
   createdAtBefore?: Date;
   createdAtAfter?: Date;
@@ -58,7 +59,7 @@ export interface ChannelFilterOptions {
 // --- Related entity types for inclusion ---
 export type ConnectedChannelWithIncludes = ConnectedChannel & {
   user?: User;
-  customers?: Customer[]; // Placeholder
-  orders?: Order[];       // Placeholder
-  chats?: Chat[];         // Placeholder
+  customers?: Customer[];
+  orders?: Order[];
+  chats?: Chat[];
 };

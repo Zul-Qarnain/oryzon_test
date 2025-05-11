@@ -1,8 +1,8 @@
 import { customers, connectedChannels, orders, chats } from '@/db/schema';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-// import { ConnectedChannel } from '@/backend/services/channels/channels.types'; // Will be created shortly
-// import { Order } from '@/backend/services/orders/orders.types';             // Will be created shortly
-// import { Chat } from '@/backend/services/chats/chats.types';                // Will be created shortly
+import { ConnectedChannel } from '@/backend/services/channels/channels.types';
+import { Order } from '@/backend/services/orders/orders.types';
+import { Chat } from '@/backend/services/chats/chats.types';
 
 // Base Customer type from schema
 export type Customer = InferSelectModel<typeof customers>;
@@ -10,7 +10,7 @@ export type NewCustomer = InferInsertModel<typeof customers>;
 
 // Options for including related entities
 export interface CustomerIncludeOptions {
-  connectedChannel?: boolean; // Assuming ConnectedChannel type will be defined in channels.types.ts
+  connectedChannel?: boolean;
   orders?: { limit?: number; offset?: number } | boolean;
   chats?: { limit?: number; offset?: number } | boolean;
 }
@@ -30,7 +30,7 @@ export interface GetAllCustomersOptions {
 
 // Data for creating a new customer
 export type CreateCustomerData = Omit<NewCustomer, 'customerId' | 'firstSeenAt' | 'lastSeenAt'> & {
-  channelId: string; // Assuming channelId is a string (UUID)
+  channelId: ConnectedChannel['channelId']; // Use type from ConnectedChannel
 };
 
 // Data for updating an existing customer
@@ -56,7 +56,7 @@ export interface CustomerFilterOptions {
 
 // --- Related entity types for inclusion ---
 export type CustomerWithIncludes = Customer & {
-  connectedChannel?: any; // Placeholder for ConnectedChannel type
-  orders?: any[];         // Placeholder for Order type
-  chats?: any[];          // Placeholder for Chat type
+  connectedChannel?: ConnectedChannel;
+  orders?: Order[];
+  chats?: Chat[];
 };
