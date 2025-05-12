@@ -4,6 +4,7 @@ import { User } from '@/backend/services/users/users.types';
 import { Customer } from '@/backend/services/customers/customers.types';
 import { Order } from '@/backend/services/orders/orders.types';
 import { Chat } from '@/backend/services/chats/chats.types';
+import { Product } from '@/backend/services/products/products.types'; // Import Product type
 
 // Base ConnectedChannel type from schema
 export type ConnectedChannel = InferSelectModel<typeof connectedChannels>;
@@ -15,6 +16,7 @@ export interface ChannelIncludeOptions {
   customers?: { limit?: number; offset?: number } | boolean;
   orders?: { limit?: number; offset?: number } | boolean;
   chats?: { limit?: number; offset?: number } | boolean;
+  products?: { limit?: number; offset?: number } | boolean; // Add products include option
 }
 
 // Options for GetById
@@ -64,4 +66,5 @@ export type ConnectedChannelWithIncludes = ConnectedChannel & {
   customers?: Customer[];
   orders?: Order[];
   chats?: Chat[];
+  products?: Product[]; // Add products to related entity types
 };

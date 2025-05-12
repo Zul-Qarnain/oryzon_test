@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { connectedChannels, users, customers, orders, chats } from '@/db/schema';
+import { connectedChannels, users, customers, orders, chats, products } from '@/db/schema'; // Added products
 import {
   ConnectedChannel,
   CreateChannelData,
@@ -42,6 +42,11 @@ export class ChannelsService {
           ? { 
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
             } 
+          : undefined,
+        products: options?.include?.products // Add products include
+          ? {
+              limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit,
+            }
           : undefined,
       }
     });
@@ -102,6 +107,11 @@ export class ChannelsService {
           ? { 
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
             } 
+          : undefined,
+        products: options?.include?.products // Add products include
+          ? {
+              limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit,
+            }
           : undefined,
       },
       orderBy: [desc(connectedChannels.createdAt)]

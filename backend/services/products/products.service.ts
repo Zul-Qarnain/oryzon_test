@@ -25,6 +25,7 @@ export class ProductsService {
       where: eq(products.productId, productId),
       with: {
         user: options?.include?.user ? true : undefined,
+        connectedChannel: options?.include?.connectedChannel ? true : undefined,
         orderItems: options?.include?.orderItems
           ? {
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
@@ -53,6 +54,9 @@ export class ProductsService {
     }
     if (filter?.userId) {
       conditions.push(eq(products.userId, filter.userId));
+    }
+    if (filter?.channelId) {
+      conditions.push(eq(products.channelId, filter.channelId));
     }
     if (filter?.isAvailable !== undefined) {
       conditions.push(eq(products.isAvailable, filter.isAvailable));
@@ -85,6 +89,7 @@ export class ProductsService {
       offset: offset,
       with: {
         user: options?.include?.user ? true : undefined,
+        connectedChannel: options?.include?.connectedChannel ? true : undefined,
         orderItems: options?.include?.orderItems
           ? {
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,

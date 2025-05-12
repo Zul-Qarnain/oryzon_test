@@ -8,6 +8,7 @@ const VALID_CHANNEL_INCLUDES: (keyof ChannelIncludeOptions)[] = [
   'customers',
   'orders',
   'chats',
+  'products', // Add products
 ];
 
 type PlatformType = typeof platformTypeEnum.enumValues[number];

@@ -5,6 +5,7 @@ import { parseIncludeQuery, parsePaginationParams, getStringFilterParam } from '
 const VALID_PRODUCT_INCLUDES: (keyof ProductIncludeOptions)[] = [
   'user',
   'orderItems',
+  'connectedChannel', // Add connectedChannel
 ];
 
 export async function GET(request: Request) {
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
     const currency = getStringFilterParam(searchParams, 'currency');
     const isAvailable = getStringFilterParam(searchParams, 'isAvailable');
     const userId = getStringFilterParam(searchParams, 'userId');
+    const channelId = getStringFilterParam(searchParams, 'channelId'); // Add channelId
     const imageId = getStringFilterParam(searchParams, 'imageId');
     const shortId = getStringFilterParam(searchParams, 'shortId');
 
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
     if (currency) options.filter!.currency = currency;
     if (isAvailable !== null && isAvailable !== undefined) options.filter!.isAvailable = isAvailable === 'true';
     if (userId) options.filter!.userId = userId;
+    if (channelId) options.filter!.channelId = channelId; // Add channelId to filter
     if (imageId) options.filter!.imageId = imageId;
     if (shortId) options.filter!.shortId = shortId;
 

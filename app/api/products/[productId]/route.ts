@@ -5,6 +5,7 @@ import { parseIncludeQuery } from '../../utils';
 const VALID_PRODUCT_INCLUDES: (keyof ProductIncludeOptions)[] = [
   'user',
   'orderItems',
+  'connectedChannel', // Add connectedChannel
 ];
 
 export async function GET(

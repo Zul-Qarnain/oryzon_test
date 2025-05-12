@@ -59,7 +59,8 @@ export const customers = pgTable('customers', {
 
 export const products = pgTable('products', {
   productId: uuid('product_id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.userId),
+  userId: uuid('user_id').notNull().references(() => users.userId), // Keep user_id for ownership/management
+  channelId: uuid('channel_id').references(() => connectedChannels.channelId), // Can be nullable if products can exist without a specific channel
   name: text('name').notNull(),
   description: text('description'),
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
@@ -131,6 +132,7 @@ export const connectedChannelsRelations = relations(connectedChannels, ({ one, m
   customers: many(customers),
   orders: many(orders),
   chats: many(chats),
+  products: many(products), // Add relation from connectedChannels to products
 }));
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
@@ -146,6 +148,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   user: one(users, {
     fields: [products.userId],
     references: [users.userId],
+  }),
+  connectedChannel: one(connectedChannels, { // Add relation from product to connectedChannel
+    fields: [products.channelId],
+    references: [connectedChannels.channelId],
   }),
   orderItems: many(orderItems),
 }));
