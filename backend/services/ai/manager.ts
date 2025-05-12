@@ -30,9 +30,10 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
           id: crypto.randomUUID(),
           role:"assistant",
           content: msg.content,
-          parts: [],  
+          parts: [],
         });
       }
+      
     }
 
   return "";
