@@ -68,6 +68,9 @@ export class ChannelsService {
     if (filter?.channelName) {
       conditions.push(ilike(connectedChannels.channelName, `%${filter.channelName}%`));
     }
+    if (filter?.description) {
+      conditions.push(ilike(connectedChannels.description, `%${filter.description}%`));
+    }
     if (filter?.platformSpecificId) {
         conditions.push(eq(connectedChannels.platformSpecificId, filter.platformSpecificId));
     }

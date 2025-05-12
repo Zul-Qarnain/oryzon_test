@@ -1,20 +1,23 @@
 import { messages } from '@/db/schema';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { CoreSystemMessage, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, UIMessage } from 'ai';
-import { prompts } from './prompts';
+import { CoreSystemMessage, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, UIMessage, generateText } from 'ai';
+import { generateSystemPrompt } from './prompts'; 
 
 const google = createGoogleGenerativeAI({
   // custom settings
     apiKey: process.env.GOOGLE_API_KEY,
 });
 
-export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string) => {
+export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, channelDescription: string | null ) => {
   // 1. Find the chat
     const  history: Array<CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage> | Array<UIMessage> = [];
+
+    const systemPromptContent = generateSystemPrompt(channelDescription);
+
     history.push({
       id: crypto.randomUUID(),
       role:"system",
-      content: prompts.systemPromptsGeneral,
+      content: systemPromptContent,
       parts: [],  
     });
     for(const msg of msgs) {
@@ -35,6 +38,12 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
       }
       
     }
+    const {text} = await generateText({
+      model: google("gemini-2.5-flash-preview-04-17"),
+      messages: history,
+    
 
-  return "";
+    });
+
+  return text;
 };

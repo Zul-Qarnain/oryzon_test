@@ -37,6 +37,7 @@ export const connectedChannels = pgTable('connected_channels', {
   userId: uuid('user_id').notNull().references(() => users.userId),
   platformType: platformTypeEnum('platform_type').notNull(),
   platformSpecificId: text('platform_specific_id').notNull(),
+  description: text('description'), // Optional description for the channel
   channelName: text('channel_name'),
   accessToken: text('access_token'), // Should be encrypted in application logic
   refreshToken: text('refresh_token'), // Should be encrypted, Nullable

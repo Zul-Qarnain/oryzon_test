@@ -27,6 +27,7 @@ export async function GET(request: Request) {
     const platformType = getStringFilterParam(searchParams, 'platformType');
     const isActive = getStringFilterParam(searchParams, 'isActive');
     const channelName = getStringFilterParam(searchParams, 'channelName');
+    const description = getStringFilterParam(searchParams, 'description');
 
     const includeOptions = parseIncludeQuery<ChannelIncludeOptions, keyof ChannelIncludeOptions>(
       includeQuery,
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
     if (platformType && isPlatformType(platformType)) options.filter!.platformType = platformType;
     if (isActive !== null && isActive !== undefined) options.filter!.isActive = isActive === 'true';
     if (channelName) options.filter!.channelName = channelName;
+    if (description) options.filter!.description = description;
 
     const result = await channelsService.getAllChannels(options);
     return new Response(JSON.stringify(result), { status: 200 });

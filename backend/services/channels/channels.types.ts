@@ -26,7 +26,7 @@ export interface GetChannelByIdOptions {
 export interface GetAllChannelsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<ConnectedChannel, 'userId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId'>>;
+  filter?: Partial<Pick<ConnectedChannel, 'userId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
   orderBy?: keyof ConnectedChannel;
   include?: ChannelIncludeOptions;
 }
@@ -52,6 +52,7 @@ export interface ChannelFilterOptions {
   platformType?: ConnectedChannel['platformType'];
   isActive?: ConnectedChannel['isActive'];
   channelName?: ConnectedChannel['channelName']; // Added channelName for filtering
+  description?: ConnectedChannel['description']; // Added description for filtering
   platformSpecificId?: ConnectedChannel['platformSpecificId'];
   createdAtBefore?: Date;
   createdAtAfter?: Date;
