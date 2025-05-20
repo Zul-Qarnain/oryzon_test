@@ -6,7 +6,6 @@ const VALID_USER_INCLUDES: (keyof UserIncludeOptions)[] = [
   'connectedChannels',
   'products',
   'orders',
-  'chats',
 ];
 
 export async function GET(

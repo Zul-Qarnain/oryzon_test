@@ -8,7 +8,6 @@ const VALID_USER_INCLUDES: (keyof UserIncludeOptions)[] = [
   'connectedChannels',
   'products',
   'orders',
-  'chats',
 ];
 
 type LoginProvider = typeof loginProviderEnum.enumValues[number];

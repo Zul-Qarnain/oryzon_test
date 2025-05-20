@@ -10,7 +10,6 @@ export interface UserIncludeOptions {
   connectedChannels?: { limit?: number; offset?: number; } | boolean;
   products?: { limit?: number; offset?: number; } | boolean;
   orders?: { limit?: number; offset?: number; } | boolean;
-  chats?: { limit?: number; offset?: number; } | boolean;
 }
 
 // Options for GetById
@@ -55,5 +54,4 @@ export type UserWithIncludes = User & {
   connectedChannels?: InferSelectModel<typeof connectedChannels>[];
   products?: InferSelectModel<typeof products>[];
   orders?: InferSelectModel<typeof orders>[];
-  chats?: InferSelectModel<typeof chats>[];
 };

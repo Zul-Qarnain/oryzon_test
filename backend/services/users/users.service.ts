@@ -28,8 +28,7 @@ export class UsersService {
       with: {
         connectedChannels: options?.include?.connectedChannels ? { limit: typeof options.include.connectedChannels === 'boolean' ? undefined : options.include.connectedChannels.limit ?? 10 } : undefined,
         products: options?.include?.products ? { limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit ?? 10 } : undefined,
-        orders: options?.include?.orders ? { limit: typeof options.include.orders === 'boolean' ? undefined : options.include.orders.limit ?? 10 } : undefined,
-        chats: options?.include?.chats ? { limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit ?? 10 } : undefined,
+        orders: options?.include?.orders ? { limit: typeof options.include.orders === 'boolean' ? undefined : options.include.orders.limit ?? 10 } : undefined
       }
     });
     const user = await query;
@@ -59,8 +58,7 @@ export class UsersService {
         connectedChannels: options?.include?.connectedChannels ? { limit: typeof options.include.connectedChannels === 'boolean' ? undefined : options.include.connectedChannels.limit ?? 10 } : undefined,
         products: options?.include?.products ? { limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit ?? 10 } : undefined,
         orders: options?.include?.orders ? { limit: typeof options.include.orders === 'boolean' ? undefined : options.include.orders.limit ?? 10 } : undefined,
-        chats: options?.include?.chats ? { limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit ?? 10 } : undefined,
-      },
+          },
       // TODO: Add orderBy
     });
 
