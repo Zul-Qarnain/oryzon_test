@@ -3,9 +3,9 @@ import CloseIcon from '@/components/CloseIcon';
 
 const NewProjectPage = () => {
   return (
-    <div className="flex min-h-screen bg-color-primary text-color-primary font-sans">
+    <div className="flex min-h-[93vh] sm:min-h-screen bg-color-primary text-color-primary font-sans">
       {/* Left Panel */}
-      <div className="w-full lg:w-3/5 p-8 sm:p-12 md:p-16 flex flex-col space-y-2 sm:space-y-8 justify-center">
+      <div className="w-full lg:w-3/5 p-8 sm:p-12 md:p-16 flex flex-col sm:justify-between">
         <div>
           {/* Header */}
           <div className="flex items-center space-x-3 mb-16 sm:mb-24">
@@ -14,7 +14,7 @@ const NewProjectPage = () => {
           </div>
 
           {/* Main Content */}
-          <div className="mb-1 sm:mb-8">
+          <div className="mb-8">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium mb-1 sm:mb-2">
               Let&apos;s start with a name for your 
               Business<sup>®</sup>
