@@ -13,12 +13,12 @@ import {
 import { relations } from 'drizzle-orm';
 
 // ENUMs
-export const loginProviderEnum = pgEnum('login_provider', ['EMAIL', 'GOOGLE', 'FACEBOOK_AUTH', 'LINKEDIN_AUTH']);
+export const loginProviderEnum = pgEnum('login_provider', ['EMAIL', 'GOOGLE', 'FACEBOOK', 'LINKEDIN', 'TWITTER', 'INSTAGRAM']);
 export const platformTypeEnum = pgEnum('platform_type', ['FACEBOOK_PAGE', 'INSTAGRAM_BUSINESS', 'LINKEDIN_PAGE', 'TWITTER_PROFILE']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED']);
 export const chatStatusEnum = pgEnum('chat_status', ['OPEN', 'CLOSED_BY_BOT', 'CLOSED_BY_AGENT', 'ARCHIVED']);
 export const messageSenderTypeEnum = pgEnum('message_sender_type', ['BOT', 'CUSTOMER', 'AGENT']);
-export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'FILE', 'QUICK_REPLY', 'CAROUSEL']);
+export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'IMAGE',  'AUDIO',]);
 
 // Tables
 export const users = pgTable('users', {
