@@ -26,7 +26,7 @@ export interface BusinessContextType {
   businessLoading: boolean;
   businessError: string | null;
   fetchBusiness: (businessId: string, options?: { include?: string }) => Promise<ApiResponse<BusinessWithRelations>>;
-  fetchBusinesses: (options?: { filter?: BusinessFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: BusinessWithRelations[]; total: number }>>;
+  fetchBusinesses: (options?: { filter?: BusinessFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<BusinessWithRelations[]>>;
   createBusiness: (data: CreateBusinessPayload) => Promise<ApiResponse<BusinessWithRelations>>;
   updateBusiness: (businessId: string, data: UpdateBusinessPayload) => Promise<ApiResponse<BusinessWithRelations>>;
   deleteBusiness: (businessId: string) => Promise<ApiResponse<null>>;
@@ -61,7 +61,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   }, [request]);
 
   const fetchBusinesses = useCallback(
-    async (options?: { filter?: BusinessFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: BusinessWithRelations[]; total: number }>> => {
+    async (options?: { filter?: BusinessFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<BusinessWithRelations[]>> => {
       setBusinessLoading(true);
       setBusinessError(null);
       const params = new URLSearchParams();
@@ -84,15 +84,14 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       // params.append("providerUserId", FUser.uid); // Or "userId" depending on your API
 
       const url = `/api/businesses${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await request<{ data: BusinessWithRelations[]; total: number }>("GET", url);
+      const response = await request<BusinessWithRelations[]>('GET', url);
 
       if (response.error) {
         setBusinessError(response.error);
         setBusinesses([]);
         setTotalBusinesses(0);
-      } else if (response.result) {
-        setBusinesses(response.result.data || []);
-        setTotalBusinesses(response.result.total || 0);
+      } else  {
+        setBusinesses(response.result || []);
       }
       setBusinessLoading(false);
       return response;

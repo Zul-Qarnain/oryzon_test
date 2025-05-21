@@ -10,6 +10,7 @@ import { OrderProvider } from "./lib/context/OrderContext";
 import { MessageProvider } from "./lib/context/MessageContext";
 import { ProductProvider } from "./lib/context/ProductContext";
 import { CustomerProvider } from "./lib/context/CustomerContext"; // Import CustomerProvider
+import { BusinessProvider } from "./lib/context/BusinessContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
       >
         <FetchProvider>
           <UserProvider>
+            <BusinessProvider>
             <ChannelProvider>
               <ChatProvider>
                 <OrderProvider>
@@ -51,6 +53,7 @@ export default function RootLayout({
                 </OrderProvider>
               </ChatProvider>
             </ChannelProvider>
+            </BusinessProvider>
           </UserProvider>
         </FetchProvider>
       </body>

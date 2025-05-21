@@ -17,10 +17,10 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     // Fetch businesses only if a user is logged in (FUser exists)
     // and businesses haven't been fetched yet or need refreshing.
-    if (FUser && businesses.length === 0) { // Basic condition, adjust as needed
+    if (user && businesses.length === 0) { // Basic condition, adjust as needed
       // Ensure the filter matches what your API expects for businesses
       // This might be user.userId or user.providerUserId
-      fetchBusinesses({ filter: { providerUserId: FUser.uid} }); 
+      fetchBusinesses({ filter: { userId: user!.userId } }); 
     }
   }, [FUser, user, fetchBusinesses, businesses.length]);
 

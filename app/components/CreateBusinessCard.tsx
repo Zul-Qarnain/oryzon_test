@@ -2,15 +2,13 @@
 
 import React from 'react';
 import { PlusCircle } from 'lucide-react';
-// import Link from 'next/link'; // If you have a dedicated page for creating businesses
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 const CreateBusinessCard: React.FC = () => {
-  // TODO: Implement navigation to a create business page or open a modal
+  const router = useRouter(); // Initialize router
+
   const handleCreateBusiness = () => {
-    // For now, log to console. Replace with actual navigation or modal logic.
-    console.log("Navigate to create business page or open modal.");
-    // Example using Link (if you have a route like /businesses/new):
-    // router.push('/businesses/new'); 
+    router.push('/business/new'); // Navigate to the new business page
   };
 
   return (

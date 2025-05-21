@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     const userId = url.searchParams.get('userId');
     const providerUserId = url.searchParams.get('providerUserId');
 
+    console.log('Fetching businesses for userId:', userId, 'or providerUserId:', providerUserId);
     // TODO: Implement proper authentication and authorization.
     // For now, allows fetching by userId or providerUserId if provided, otherwise fetches all (not recommended for production).
     // In a real app, you'd likely get the authenticated user's ID and filter by that.
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'User identifier (userId or providerUserId) is required for listing businesses' }, { status: 400 });
     }
 
+    console.log('Fetched businesses:', businessesList);
     return NextResponse.json(businessesList, { status: 200 });
   } catch (error) {
     console.error('Error fetching businesses:', error);
