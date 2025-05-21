@@ -13,16 +13,53 @@
   --text-placeholder: #6b7280; /* equivalent to gray-500 */
   
   /* Background colors */
-  --bg-primary: #1E1E1E;
-  --bg-secondary: #333333;
-  --bg-secondary-hover: #444444;
-  --bg-accent: #4B5563;      /* equivalent to gray-600 */
-  --bg-badge: #374151;       /* equivalent to gray-700 */
+  --bg-primary: #1E1E1E; /* Page background */
+  --bg-secondary: #333333; /* Card background */
+  --bg-secondary-hover: #444444; /* Card background hover */
+  --bg-accent: #4B5563;      /* equivalent to gray-600, for buttons, placeholders */
+  --bg-badge: #374151;       /* equivalent to gray-700, for cards or distinct sections */
   
   /* Border colors */
   --border-light: #4B5563;   /* equivalent to gray-600 */
   --border-medium: #374151;  /* equivalent to gray-700 */
   --border-focus: #9ca3af;   /* equivalent to gray-400 */
+
+  /* New Theme Variables */
+  --bg-header: #1a1a1a; /* Slightly different from bg-primary if needed, else use --bg-primary */
+  --bg-page: var(--bg-primary); /* For main page content area */
+  --bg-card: var(--bg-badge); /* Default card background */
+  --bg-card-hover: var(--bg-accent); /* Default card hover background */
+  
+  --text-on-dark-primary: var(--text-primary);
+  --text-on-dark-secondary: var(--text-secondary);
+  --text-on-dark-muted: var(--text-muted);
+  --text-page-heading: var(--text-secondary);
+
+  --color-accent-primary: #f97316; /* orange-500 */
+  --color-accent-primary-glow: rgba(251, 146, 60, 0.4); /* orange-500 with alpha for glow/shadow */
+  --shadow-accent-primary-hover: 0 0 15px var(--color-accent-primary-glow);
+
+  --bg-button-secondary: var(--bg-accent);
+  --bg-button-secondary-hover: #5a6675; /* Slightly lighter than gray-600 */
+
+  --icon-color-default: var(--text-on-dark-muted);
+  --icon-color-hover: var(--text-on-dark-primary);
+  --icon-accent-primary: var(--color-accent-primary);
+
+  --bg-notification-badge: #ef4444; /* red-500 */
+  --text-on-notification-badge: var(--text-on-dark-primary);
+
+  --text-error: #f87171; /* red-400 */
+  --bg-error-transparent: rgba(127, 29, 29, 0.3); /* red-900 with alpha */
+
+  --icon-platform-facebook: #3b5998;
+  --icon-platform-instagram: #e1306c;
+  --icon-platform-linkedin: #0077b5;
+  --icon-platform-twitter: #1da1f2;
+  --icon-platform-default: var(--text-on-dark-muted);
+
+  --border-card-accent: var(--color-accent-primary);
+  --border-card-divider: var(--border-light);
 }
 
 @theme inline {
@@ -36,6 +73,7 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    /* You might want to redefine some of the new variables here if they need to differ significantly based on OS theme preference */
   }
 }
 
