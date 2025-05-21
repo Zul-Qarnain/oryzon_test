@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
     const result = await usersService.getAllUsers(options);
     return NextResponse.json(result);
   } catch (error) {
+    console.error('Error fetching users:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
     const newUser = await usersService.createUser(body);
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
+    console.error('Error creating user:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

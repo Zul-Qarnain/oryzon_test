@@ -197,7 +197,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return existingUser;
       } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
         const userData: CreateUserData = {
-          userId: firebaseUser.uid,
           name: firebaseUser.displayName || 'Default Name',
           phone: firebaseUser.phoneNumber || undefined,
           email: firebaseUser.email || undefined,
