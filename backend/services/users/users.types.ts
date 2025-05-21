@@ -26,7 +26,7 @@ export interface GetAllUsersOptions {
 }
 
 // Data for creating a new user
-export type CreateUserData = Omit<NewUser, 'userId' | 'createdAt' | 'updatedAt'>; // Exclude auto-generated fields
+export type CreateUserData = Omit<NewUser, 'createdAt' | 'updatedAt'>; // Exclude auto-generated fields
 
 // Data for updating an existing user
 export type UpdateUserData = Partial<Omit<NewUser, 'userId' | 'createdAt' | 'updatedAt'>>;

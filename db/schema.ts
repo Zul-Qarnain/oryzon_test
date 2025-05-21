@@ -23,6 +23,8 @@ export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'I
 // Tables
 export const users = pgTable('users', {
   userId: uuid('user_id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  phone: text('phone').unique(), // Nullable as per plan if OAuth provider doesn't supply it
   email: text('email').unique(), // Nullable as per plan if OAuth provider doesn't supply it
   passwordHash: text('password_hash'), // Nullable
   businessName: text('business_name'),

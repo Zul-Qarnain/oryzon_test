@@ -1,3 +1,4 @@
+"use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react"; // Added useEffect
 import { User as DbUser, UserWithIncludes, CreateUserData } from "@/backend/services/users/users.types"; // Renamed User to DbUser, added CreateUserData
 import type { UserFilterOptions as UserFilter } from "@/backend/services/users/users.types";
@@ -249,6 +250,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
         // User does not exist, create them if it's a signup or a first-time OAuth login
         const userData: CreateUserData = {
+          userId: firebaseUser.uid,
+          name: firebaseUser.displayName || 'Default Name', // Use displayName if available
+          phone: firebaseUser.phoneNumber || undefined, // phoneNumber might be null for some providers initially
           email: firebaseUser.email || undefined, // email might be null for some providers initially
           providerUserId: firebaseUser.uid,
           loginProvider: provider,

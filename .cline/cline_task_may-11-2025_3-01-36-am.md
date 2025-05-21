@@ -3562,11 +3562,11 @@ import * as schema from './schema';
 
 // TODO: Replace with your actual Neon database connection string
 // It's highly recommended to use environment variables for this.
-// Example: process.env.NEON_DATABASE_URL
-const neonConnectionString = process.env.NEON_DATABASE_URL || "postgresql://user:password@project-id.cloud.neon.tech/dbname?sslmode=require";
+// Example: process.env.DATABASE_URL
+const neonConnectionString = process.env.DATABASE_URL || "postgresql://user:password@project-id.cloud.neon.tech/dbname?sslmode=require";
 
 if (!neonConnectionString) {
-  throw new Error('NEON_DATABASE_URL environment variable is not set or is empty.');
+  throw new Error('DATABASE_URL environment variable is not set or is empty.');
 }
 
 const sql = neon(neonConnectionString);
@@ -3595,11 +3595,11 @@ import * as schema from './schema';
 
 // TODO: Replace with your actual Neon database connection string
 // It's highly recommended to use environment variables for this.
-// Example: process.env.NEON_DATABASE_URL
-const neonConnectionString = process.env.NEON_DATABASE_URL || "postgresql://user:password@project-id.cloud.neon.tech/dbname?sslmode=require";
+// Example: process.env.DATABASE_URL
+const neonConnectionString = process.env.DATABASE_URL || "postgresql://user:password@project-id.cloud.neon.tech/dbname?sslmode=require";
 
 if (!neonConnectionString) {
-  throw new Error('NEON_DATABASE_URL environment variable is not set or is empty.');
+  throw new Error('DATABASE_URL environment variable is not set or is empty.');
 }
 
 const sql = neon(neonConnectionString);
@@ -10596,7 +10596,7 @@ The Drizzle ORM `db` instance is set up in `db/index.ts` for Neon.
 The ESLint rule `@typescript-eslint/no-unused-vars` has been disabled globally in `eslint.config.mjs` to prevent warnings about schema imports used by Drizzle's relational query system.
 
 Next steps would typically involve:
-1.  Ensuring your `NEON_DATABASE_URL` environment variable is correctly set.
+1.  Ensuring your `DATABASE_URL` environment variable is correctly set.
 2.  Running Drizzle migrations to create these tables in your database if you haven't already.
 3.  Thoroughly testing each service method.
 4.  Implementing more complex business logic, error handling, and input validation within these services.
@@ -10916,7 +10916,7 @@ backend/
 *   **`db/index.ts`:**
     *   Initializes and exports the Drizzle ORM client instance (`db`).
     *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-    *   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+    *   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 1.5. ESLint Configuration (`eslint.config.mjs`)
 
@@ -11117,7 +11117,7 @@ backend/
 *   **`db/index.ts`:**
     *   Initializes and exports the Drizzle ORM client instance (`db`).
     *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-    *   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+    *   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 1.5. ESLint Configuration (`eslint.config.mjs`)
 
@@ -11336,7 +11336,7 @@ backend/
 
 *   Initializes and exports the Drizzle ORM client instance (`db`).
 *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+*   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 2.5. ESLint Configuration (`eslint.config.mjs`)
 
@@ -11781,7 +11781,7 @@ backend/
 
 *   Initializes and exports the Drizzle ORM client instance (`db`).
 *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+*   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 2.5. ESLint Configuration (`eslint.config.mjs`)
 
@@ -12438,7 +12438,7 @@ backend/
 
 *   Initializes and exports the Drizzle ORM client instance (`db`).
 *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+*   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 2.5. ESLint Configuration (`eslint.config.mjs`)
 
@@ -12879,7 +12879,7 @@ backend/
 
 *   Initializes and exports the Drizzle ORM client instance (`db`).
 *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+*   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 2.5. ESLint Configuration (`eslint.config.mjs`)
 

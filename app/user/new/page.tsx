@@ -1,51 +1,143 @@
-import React from 'react';
+"use client";
+import React, { useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useUserContext } from '@/app/lib/context/UserContext';
+import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook } from 'react-icons/fa';
 
 const NewProjectPage = () => {
+  const [step, setStep] = useState(1);
+  const [inputProjectName, setInputProjectName] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const { signUpWithGoogle, signUpWithFacebook, user_loading, error_user } = useUserContext();
+
+  const handleContinue = () => {
+    if (!inputProjectName.trim()) {
+      setFormError('Project name cannot be empty.');
+      return;
+    }
+    setFormError('');
+    setProjectName(inputProjectName.trim());
+    setStep(2);
+  };
+
+  const handleGoogleSignUp = async () => {
+    if (!projectName) return;
+    await signUpWithGoogle(projectName);
+  };
+
+  const handleFacebookSignUp = async () => {
+    if (!projectName) return;
+    await signUpWithFacebook(projectName);
+  };
+
+  const step1Image = "https://firebasestorage.googleapis.com/v0/b/console-assets.appspot.com/o/project_setup%2Fdesktop_create_project.png?alt=media&token=2f3c3690-5494-4bb6-8851-e699d033d02c";
+  const step2Image = "https://firebasestorage.googleapis.com/v0/b/oryzon-1556239798085.appspot.com/o/assets%2Fundraw_social_login_re_k29v.svg?alt=media&token=32d32141-2f77-44b3-8a0a-4bb94979aced";
+
   return (
-    <div className="flex min-h-[93vh] sm:min-h-screen bg-color-primary text-color-primary font-sans">
+    <div className="flex min-h-screen bg-color-primary text-color-primary font-sans">
       {/* Left Panel */}
-      <div className="w-full lg:w-3/5 p-8 sm:p-12 md:p-16 flex flex-col sm:justify-between">
-        <div>
+      <div className="w-full lg:w-3/5 p-8 sm:p-12 md:p-16 flex flex-col justify-between">
+      
           {/* Header */}
-          <div className="flex items-center space-x-3 mb-16 sm:mb-24">
+          <div className="flex items-center space-x-3 mb-12 sm:mb-24">
             <CloseIcon />
-            <h1 className="text-lg sm:text-xl">Create an account</h1>
+            <h1 className="text-lg sm:text-xl">Create a project</h1>
           </div>
 
-          {/* Main Content */}
-          <div className="mb-8">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium mb-1 sm:mb-2">
-              Let&apos;s start with a name for your 
-              Business<sup>®</sup>
-            </h2>
+          {step === 1 && (
+            <>
+              {/* Main Content - Step 1 */}
+              <div className="mb-8">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium mb-9 sm:mb-2">
+                  Let&apos;s start with a name for your 
+                  project<sup>®</sup>
+                </h2>
 
-            <div className="mb-3">
-              <input
-                type="text"
-                placeholder="Enter your business name"
-                className="w-full bg-transparent border-b border-color-light py-3 text-xl sm:text-2xl placeholder-color-muted focus:outline-none focus-border-color-focus transition-colors duration-300"
-              />
-            </div>
-            <p className="text-xs sm:text-sm text-color-muted bg-color-badge px-3 py-1 inline-block rounded-full">
-              my-awesome-business
-              
-            </p>
-          </div>
-        </div>
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    placeholder="Project name"
+                    value={inputProjectName}
+                    onChange={(e) => {
+                      setInputProjectName(e.target.value);
+                      if (formError) setFormError('');
+                    }}
+                    className="w-full bg-transparent border-b border-color-light py-3 text-3xl font-semibold sm:text-2xl placeholder-color-muted placeholder:text-3xl  focus:outline-none focus-border-color-focus transition-colors duration-300"
+                  />
+                </div>
+                {formError && <p className="text-xs sm:text-sm text-red-500 mb-2">{formError}</p>}
+                <p className="text-xs sm:text-sm text-color-muted bg-color-badge px-3 py-1 inline-block rounded-full">
+                  {inputProjectName.trim().toLowerCase().replace(/\s+/g, '-') || 'my-awesome-project-id'}
+                </p>
+              </div>
+               {/* Footer - Step 1 */}
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mt-auto mb-[20%] sm:mb-[0%]">
+                <div className="mb-6 sm:mb-0">
+                  <p className="text-sm font-semibold mb-1 text-color-secondary">Already have a Oryza<sup>®</sup> account?</p>
+                  <a href="#" className="text-sm font-semibold text-color-link text-color-link-hover hover:underline">
+                    Sign in
+                  </a>
+                </div>
+                <button 
+                  onClick={handleContinue}
+                  className="bg-color-secondary bg-color-secondary-hover text-color-secondary py-3 px-8 rounded-md text-sm sm:text-base transition-colors duration-300"
+                >
+                  Continue
+                </button>
+              </div>
+            </>
+          )}
 
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mt-auto">
-          <div className="mb-6 sm:mb-0">
-            <p className="text-xs sm:text-sm mb-1 text-color-secondary">Already have an Oryzon<sup>®</sup> account?</p>
-            <a href="#" className="text-xs sm:text-sm text-color-link text-color-link-hover hover:underline">
-              Login to your account
-            </a>
-          </div>
-          <button className="bg-color-secondary bg-color-secondary-hover text-color-secondary py-3 px-8 rounded-md text-sm sm:text-base transition-colors duration-300">
-            Continue
-          </button>
-        </div>
+          {step === 2 && (
+            <>
+              {/* Main Content - Step 2 */}
+              <div className="mb-8">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium mb-2 sm:mb-4">
+                  Sign up to create your project
+                </h2>
+                <p className="text-lg sm:text-xl text-color-secondary mb-6 sm:mb-8">
+                  Project: <span className="font-semibold">{projectName}</span>
+                </p>
+
+                <div className="space-y-4">
+                  <button
+                    onClick={handleGoogleSignUp}
+                    disabled={user_loading}
+                    className="w-full flex items-center justify-center bg-color-secondary bg-color-secondary-hover text-color-secondary py-3 px-6 rounded-md text-sm sm:text-base transition-colors duration-300 disabled:opacity-50"
+                  >
+                    <FcGoogle className="mr-3 text-xl" />
+                    Sign up with Google
+                  </button>
+                  <button
+                    onClick={handleFacebookSignUp}
+                    disabled={user_loading}
+                    className="w-full flex items-center justify-center bg-color-secondary bg-color-secondary-hover text-color-secondary py-3 px-6 rounded-md text-sm sm:text-base transition-colors duration-300 disabled:opacity-50"
+                  >
+                    <FaFacebook className="mr-3 text-xl text-[#1877F2]" />
+                    Sign up with Facebook
+                  </button>
+                </div>
+                {user_loading && <p className="text-sm text-color-muted mt-4 text-center">Processing...</p>}
+                {error_user && <p className="text-sm text-red-500 mt-4 text-center">{error_user}</p>}
+              </div>
+              {/* Footer - Step 2 */}
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mt-auto mb-[20%] sm:mb-[0%]">
+                <button
+                  onClick={() => {
+                    setStep(1);
+                  }}
+                  disabled={user_loading}
+                  className="font-semibold text-sm text-color-link text-color-link-hover hover:underline disabled:opacity-50"
+                >
+                  Back
+                </button>
+              </div>
+            </>
+          )}
+       
       </div>
 
       {/* Right Panel (Image) */}
@@ -62,10 +154,8 @@ const NewProjectPage = () => {
         </svg>
 
         <div className="z-10 text-center">
-          {/* Replace with your actual image component or <img> tag */}
-          {/* Example placeholder image: */}
           <img 
-            src="https://firebasestorage.googleapis.com/v0/b/console-assets.appspot.com/o/project_setup%2Fdesktop_create_project.png?alt=media&token=2f3c3690-5494-4bb6-8851-e699d033d02c" 
+            src={step === 1 ? step1Image : step2Image} 
             alt="Project illustration" 
             className="max-w-sm md:max-w-md lg:max-w-lg" 
           />

@@ -348,7 +348,7 @@ backend/
 
 *   Initializes and exports the Drizzle ORM client instance (`db`).
 *   Configured to connect to a Neon serverless Postgres database using the `@neondatabase/serverless` driver and `drizzle-orm/neon-http` adapter.
-*   The database connection string is expected to be provided via the `NEON_DATABASE_URL` environment variable.
+*   The database connection string is expected to be provided via the `DATABASE_URL` environment variable.
 
 ### 2.5. ESLint Configuration (`eslint.config.mjs`)
 
