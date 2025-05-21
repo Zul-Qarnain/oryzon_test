@@ -17,7 +17,7 @@
   --bg-secondary: #333333; /* Card background */
   --bg-secondary-hover: #444444; /* Card background hover */
   --bg-accent: #4B5563;      /* equivalent to gray-600, for buttons, placeholders */
-  --bg-badge: #374151;       /* equivalent to gray-700, for cards or distinct sections */
+  --bg-badge: #222425;       /* equivalent to gray-700, for cards or distinct sections */
   
   /* Border colors */
   --border-light: #4B5563;   /* equivalent to gray-600 */
