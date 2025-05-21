@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     const result = await productsService.getAllProducts(options);
     return new Response(JSON.stringify(result), { status: 200 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
     const newProduct = await productsService.createProduct(body);
     return new Response(JSON.stringify(newProduct), { status: 201 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }

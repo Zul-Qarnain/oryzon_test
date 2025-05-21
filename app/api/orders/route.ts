@@ -50,6 +50,7 @@ export async function GET(request: Request) {
     const result = await ordersService.getAllOrders(options);
     return new Response(JSON.stringify(result), { status: 200 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     const newOrder = await ordersService.createOrder(body);
     return new Response(JSON.stringify(newOrder), { status: 201 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }

@@ -41,6 +41,7 @@ export async function GET(
     }
     return new Response(JSON.stringify(chat), { status: 200 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }
@@ -65,6 +66,7 @@ export async function PUT(
     }
     return new Response(JSON.stringify(updatedChat), { status: 200 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }
@@ -87,6 +89,7 @@ export async function DELETE(
     }
     return new Response(null, { status: 204 });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 }
