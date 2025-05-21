@@ -1,8 +1,9 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Customer, CustomerWithIncludes } from "@/backend/services/customers/customers.types";
+import { Customer, CustomerWithIncludes, CreateCustomerData } from "@/backend/services/customers/customers.types"; // Added CreateCustomerData
 import type { CustomerFilterOptions as CustomerFilter } from "@/backend/services/customers/customers.types";
-import { useFetchContext, ApiResponse } from "./FetchContext"; // Import useFetchContext and ApiResponse
+import { useFetchContext, ApiResponse } from "./FetchContext";
+import { useUserContext } from "./UserContext"; // Import useUserContext
 
 export interface PaginationOptions {
   limit?: number;
@@ -17,7 +18,7 @@ export interface CustomerContextType {
   error_customer: string | null;
   fetchCustomer: (customerId: string, options?: { include?: string }) => Promise<ApiResponse<CustomerWithIncludes>>;
   fetchCustomers: (options?: { filter?: CustomerFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: CustomerWithIncludes[]; total: number }>>;
-  createCustomer: (data: Partial<Customer>) => Promise<ApiResponse<CustomerWithIncludes>>;
+  createCustomer: (data: Omit<CreateCustomerData, 'providerUserId'> & { businessId: string; channelId: string; platformCustomerId: string; }) => Promise<ApiResponse<CustomerWithIncludes>>; // Updated createCustomer data type
   updateCustomer: (customerId: string, data: Partial<Customer>) => Promise<ApiResponse<CustomerWithIncludes>>;
   deleteCustomer: (customerId: string) => Promise<ApiResponse<null>>;
   cleanError_Customer: () => void;
@@ -26,7 +27,8 @@ export interface CustomerContextType {
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
 export const CustomerProvider = ({ children }: { children: ReactNode }) => {
-  const { request } = useFetchContext(); // Get request from FetchContext
+  const { request } = useFetchContext();
+  const { FUser } = useUserContext(); // Get FUser from UserContext
   const [customer, setCustomer] = useState<CustomerWithIncludes | null>(null);
   const [customers, setCustomers] = useState<CustomerWithIncludes[]>([]);
   const [total_customer, setTotalCustomer] = useState(0);
@@ -82,19 +84,39 @@ export const CustomerProvider = ({ children }: { children: ReactNode }) => {
     [request]
   );
 
-  const createCustomer = useCallback(async (data: Partial<Customer>): Promise<ApiResponse<CustomerWithIncludes>> => {
-    setCustomerLoading(true);
-    setErrorCustomer(null);
-    const response = await request<CustomerWithIncludes>("POST", "/api/customers", data);
+  const createCustomer = useCallback(
+    async (data: Omit<CreateCustomerData, 'providerUserId'> & { businessId: string; channelId: string; platformCustomerId: string; }): Promise<ApiResponse<CustomerWithIncludes>> => {
+      setCustomerLoading(true);
+      setErrorCustomer(null);
 
-    if (response.error) {
-      setErrorCustomer(response.error);
-    } else {
-      setCustomer(response.result); // Optionally update current customer or refetch list
-    }
-    setCustomerLoading(false);
-    return response;
-  }, [request]);
+      if (!data.businessId || !data.channelId || !data.platformCustomerId) {
+        const errorMsg = "Business ID, Channel ID, and Platform Customer ID are required to create a customer.";
+        setErrorCustomer(errorMsg);
+        setCustomerLoading(false);
+        return { error: errorMsg, result: null, statusCode: 400 };
+      }
+
+      const completeCustomerData: CreateCustomerData = {
+        ...data, // This includes businessId, channelId, platformCustomerId and other customer fields
+        providerUserId: FUser?.uid || null, // Set providerUserId from FUser, or null if not available
+      };
+
+      const response = await request<CustomerWithIncludes>("POST", "/api/customers", completeCustomerData);
+
+      if (response.error) {
+        setErrorCustomer(response.error);
+      } else {
+        setCustomer(response.result);
+        if (response.result) {
+          setCustomers(prevCustomers => [response.result!, ...prevCustomers.filter(c => c.customerId !== response.result!.customerId)]);
+          setTotalCustomer(prevTotal => prevTotal + 1);
+        }
+      }
+      setCustomerLoading(false);
+      return response;
+    },
+    [request, FUser]
+  );
 
   const updateCustomer = useCallback(async (customerId: string, data: Partial<Customer>): Promise<ApiResponse<CustomerWithIncludes>> => {
     setCustomerLoading(true);

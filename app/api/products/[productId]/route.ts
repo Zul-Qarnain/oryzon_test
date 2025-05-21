@@ -1,11 +1,13 @@
 import { productsService } from '@/backend/services/products/products.service';
 import { ProductIncludeOptions, UpdateProductData } from '@/backend/services/products/products.types';
-import { parseIncludeQuery } from '../../utils';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 
+// Updated valid includes for a product
 const VALID_PRODUCT_INCLUDES: (keyof ProductIncludeOptions)[] = [
-  'user',
+  'business',
+  'userViaProviderId', // For the denormalized user link
   'orderItems',
-  'connectedChannel', // Add connectedChannel
+  // 'user' and 'connectedChannel' are removed as direct relations for include
 ];
 
 export async function GET(

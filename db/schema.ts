@@ -22,28 +22,38 @@ export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'I
 
 // Tables
 export const users = pgTable('users', {
-  userId: uuid('user_id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').primaryKey().defaultRandom(), // Primary internal ID
   name: text('name').notNull(),
-  phone: text('phone').unique(), // Nullable as per plan if OAuth provider doesn't supply it
-  email: text('email').unique(), // Nullable as per plan if OAuth provider doesn't supply it
-  passwordHash: text('password_hash'), // Nullable
-  businessName: text('business_name'),
+  phone: text('phone').unique(),
+  email: text('email').unique(),
+  passwordHash: text('password_hash'),
+  // businessName removed
   loginProvider: loginProviderEnum('login_provider'),
-  providerUserId: text('provider_user_id').unique(), // Nullable, but must be unique if set
+  providerUserId: text('provider_user_id').unique(), // Nullable, from OAuth provider
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const businesses = pgTable('businesses', {
+  businessId: uuid('business_id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.userId), // Link to primary user ID
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
+  name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const connectedChannels = pgTable('connected_channels', {
   channelId: uuid('channel_id').primaryKey().defaultRandom(),
-  providerUserId: text('provider_user_id').notNull().references(() => users.providerUserId),
+  businessId: uuid('business_id').notNull().references(() => businesses.businessId),
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   platformType: platformTypeEnum('platform_type').notNull(),
   platformSpecificId: text('platform_specific_id').notNull(),
-  description: text('description'), // Optional description for the channel
+  description: text('description'),
   channelName: text('channel_name'),
-  accessToken: text('access_token'), // Should be encrypted in application logic
-  refreshToken: text('refresh_token'), // Should be encrypted, Nullable
-  tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }), // Nullable
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -51,26 +61,28 @@ export const connectedChannels = pgTable('connected_channels', {
 
 export const customers = pgTable('customers', {
   customerId: uuid('customer_id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').notNull().references(() => businesses.businessId),
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
-  platformCustomerId: text('platform_customer_id').notNull(), // Unique per channel
-  fullName: text('full_name'), // Optional
-  profilePictureUrl: text('profile_picture_url'), // Optional
+  platformCustomerId: text('platform_customer_id').notNull(),
+  fullName: text('full_name'),
+  profilePictureUrl: text('profile_picture_url'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const products = pgTable('products', {
   productId: uuid('product_id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.userId), // Keep user_id for ownership/management
-  channelId: uuid('channel_id').references(() => connectedChannels.channelId), // Can be nullable if products can exist without a specific channel
+  businessId: uuid('business_id').notNull().references(() => businesses.businessId),
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   name: text('name').notNull(),
   description: text('description'),
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
-  currency: varchar('currency', { length: 3 }).notNull(), // e.g., 'USD'
-  sku: text('sku'), // Optional
-  imageUrl: text('image_url'), // Optional
-  imageId: text('image_id'), // Optional
-  shortId: text('short_id'), // Optional, could be used for short links or easier references
+  currency: varchar('currency', { length: 3 }).notNull(),
+  sku: text('sku'),
+  imageUrl: text('image_url'),
+  imageId: text('image_id'),
+  shortId: text('short_id'),
   isAvailable: boolean('is_available').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -78,14 +90,15 @@ export const products = pgTable('products', {
 
 export const orders = pgTable('orders', {
   orderId: uuid('order_id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').notNull().references(() => businesses.businessId),
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   customerId: uuid('customer_id').notNull().references(() => customers.customerId),
-  channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
-  userId: uuid('user_id').notNull().references(() => users.userId), // Denormalized
+  channelId: uuid('channel_id').references(() => connectedChannels.channelId),
   orderStatus: orderStatusEnum('order_status').default('PENDING').notNull(),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
-  shippingAddress: jsonb('shipping_address'), // Can store structured address data
-  billingAddress: jsonb('billing_address'), // Can store structured address data
+  shippingAddress: jsonb('shipping_address'),
+  billingAddress: jsonb('billing_address'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -103,9 +116,10 @@ export const chats = pgTable('chats', {
   chatId: uuid('chat_id').primaryKey().defaultRandom(),
   customerId: uuid('customer_id').notNull().references(() => customers.customerId),
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
+  providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
-  status: chatStatusEnum('status').default('OPEN'), // Optional
+  status: chatStatusEnum('status').default('OPEN'),
 });
 
 export const messages = pgTable('messages', {
@@ -113,31 +127,63 @@ export const messages = pgTable('messages', {
   chatId: uuid('chat_id').notNull().references(() => chats.chatId),
   senderType: messageSenderTypeEnum('sender_type').notNull(),
   contentType: messageContentTypeEnum('content_type').notNull(),
-  content: text('content').notNull(), // TEXT for simple, or stringified JSON for complex
+  content: text('content').notNull(),
   timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
-  platformMessageId: text('platform_message_id'), // Optional
+  platformMessageId: text('platform_message_id'),
 });
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
+  businesses: many(businesses),
+  // Denormalized direct links via providerUserId for easier querying if needed
+  denormalizedConnectedChannels: many(connectedChannels, { relationName: 'userToChannelsDenorm' }),
+  denormalizedProducts: many(products, { relationName: 'userToProductsDenorm' }),
+  denormalizedOrders: many(orders, { relationName: 'userToOrdersDenorm' }),
+  denormalizedCustomers: many(customers, { relationName: 'userToCustomersDenorm' }),
+  denormalizedChats: many(chats, { relationName: 'userToChatsDenorm' }),
+}));
+
+export const businessesRelations = relations(businesses, ({ one, many }) => ({
+  user: one(users, { // Primary user link
+    fields: [businesses.userId],
+    references: [users.userId],
+  }),
+  userViaProviderId: one(users, { // Denormalized link
+    fields: [businesses.providerUserId],
+    references: [users.providerUserId],
+    relationName: 'businessToUserViaProviderIdDenorm',
+  }),
   connectedChannels: many(connectedChannels),
   products: many(products),
-  orders: many(orders), // For easier querying of all orders by a user
-  // chats: many(chats), // For easier querying of all chats by a user // userId was removed from chats
+  customers: many(customers),
+  orders: many(orders),
 }));
 
 export const connectedChannelsRelations = relations(connectedChannels, ({ one, many }) => ({
-  user: one(users, {
+  business: one(businesses, {
+    fields: [connectedChannels.businessId],
+    references: [businesses.businessId],
+  }),
+  userViaProviderId: one(users, { // Denormalized link
     fields: [connectedChannels.providerUserId],
     references: [users.providerUserId],
+    relationName: 'channelToUserViaProviderIdDenorm',
   }),
   customers: many(customers),
   orders: many(orders),
   chats: many(chats),
-  products: many(products), // Add relation from connectedChannels to products
 }));
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
+  business: one(businesses, {
+    fields: [customers.businessId],
+    references: [businesses.businessId],
+  }),
+  userViaProviderId: one(users, { // Denormalized link
+    fields: [customers.providerUserId],
+    references: [users.providerUserId],
+    relationName: 'customerToUserViaProviderIdDenorm',
+  }),
   connectedChannel: one(connectedChannels, {
     fields: [customers.channelId],
     references: [connectedChannels.channelId],
@@ -147,18 +193,28 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
-  user: one(users, {
-    fields: [products.userId],
-    references: [users.userId],
+  business: one(businesses, {
+    fields: [products.businessId],
+    references: [businesses.businessId],
   }),
-  connectedChannel: one(connectedChannels, { // Add relation from product to connectedChannel
-    fields: [products.channelId],
-    references: [connectedChannels.channelId],
+  userViaProviderId: one(users, { // Denormalized link
+    fields: [products.providerUserId],
+    references: [users.providerUserId],
+    relationName: 'productToUserViaProviderIdDenorm',
   }),
   orderItems: many(orderItems),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
+  business: one(businesses, {
+    fields: [orders.businessId],
+    references: [businesses.businessId],
+  }),
+  userViaProviderId: one(users, { // Denormalized link
+    fields: [orders.providerUserId],
+    references: [users.providerUserId],
+    relationName: 'orderToUserViaProviderIdDenorm',
+  }),
   customer: one(customers, {
     fields: [orders.customerId],
     references: [customers.customerId],
@@ -166,10 +222,6 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   connectedChannel: one(connectedChannels, {
     fields: [orders.channelId],
     references: [connectedChannels.channelId],
-  }),
-  user: one(users, { // For the denormalized user_id
-    fields: [orders.userId],
-    references: [users.userId],
   }),
   orderItems: many(orderItems),
 }));
@@ -194,10 +246,11 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     fields: [chats.channelId],
     references: [connectedChannels.channelId],
   }),
-  // user: one(users, { // For the denormalized user_id // userId was removed from chats
-  //   fields: [chats.userId],
-  //   references: [users.userId],
-  // }),
+  userViaProviderId: one(users, { // Denormalized link
+    fields: [chats.providerUserId],
+    references: [users.providerUserId],
+    relationName: 'chatToUserViaProviderIdDenorm',
+  }),
   messages: many(messages),
 }));
 

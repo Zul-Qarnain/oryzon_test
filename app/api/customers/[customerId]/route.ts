@@ -1,8 +1,11 @@
 import { customersService } from '@/backend/services/customers/customers.service';
 import { CustomerIncludeOptions, UpdateCustomerData } from '@/backend/services/customers/customers.types';
-import { parseIncludeQuery } from '../../utils';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 
+// Updated valid includes for a customer
 const VALID_CUSTOMER_INCLUDES: (keyof CustomerIncludeOptions)[] = [
+  'business',
+  'userViaProviderId',
   'connectedChannel',
   'orders',
   'chats',

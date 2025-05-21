@@ -1,17 +1,19 @@
 import { channelsService } from '@/backend/services/channels/channels.service';
-import { ChannelIncludeOptions, UpdateChannelData } from '@/backend/services/channels/channels.types';
-import { parseIncludeQuery } from '../../utils';
+import { ChannelIncludeOptions, UpdateChannelData, ConnectedChannelWithIncludes } from '@/backend/services/channels/channels.types';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 import { platformTypeEnum } from '@/db/schema';
 
+// Updated valid includes for a channel
 const VALID_CHANNEL_INCLUDES: (keyof ChannelIncludeOptions)[] = [
-  'user',
+  'business',
+  'userViaProviderId', // For the denormalized user link
   'customers',
   'orders',
   'chats',
-  'products', // Add products
+  // 'products' is no longer a direct relation of connectedChannels for include via service method
 ];
 
-type PlatformType = typeof platformTypeEnum.enumValues[number];
+type PlatformType = typeof platformTypeEnum.enumValues[number]; // This type might not be used in this file anymore
 
 function isPlatformType(value: string): value is PlatformType {
   return platformTypeEnum.enumValues.includes(value as PlatformType);

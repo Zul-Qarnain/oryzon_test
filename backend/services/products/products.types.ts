@@ -1,7 +1,7 @@
-import { products, orderItems, connectedChannels } from '@/db/schema'; // Removed unused 'users', added connectedChannels
+import { products, orderItems, users, businesses } from '@/db/schema';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { User } from '@/backend/services/users/users.types'; // Assuming User type is needed
-import { ConnectedChannel } from '@/backend/services/channels/channels.types'; // Assuming ConnectedChannel type
+import { User } from '@/backend/services/users/users.types';
+import { Business } from '@/backend/services/businesses/businesses.types'; // Import Business type
 
 // Base Product type from schema
 export type Product = InferSelectModel<typeof products>;
@@ -9,9 +9,10 @@ export type NewProduct = InferInsertModel<typeof products>;
 
 // Options for including related entities
 export interface ProductIncludeOptions {
-  user?: boolean; // Include the User who defined the product
-  connectedChannel?: boolean; // Include the ConnectedChannel
-  orderItems?: { limit?: number; offset?: number; include?: { order?: boolean } } | boolean; // Include order items related to this product
+  business?: boolean; // Product now belongs to a Business
+  userViaProviderId?: boolean; // For the denormalized user link
+  orderItems?: { limit?: number; offset?: number; include?: { order?: boolean } } | boolean;
+  // connectedChannel is removed as products are now business-wide
 }
 
 // Options for GetById
@@ -23,19 +24,20 @@ export interface GetProductByIdOptions {
 export interface GetAllProductsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Product, 'name' | 'currency' | 'isAvailable' | 'userId' | 'channelId' | 'imageId' | 'shortId'>>;
+  filter?: Partial<Pick<Product, 'name' | 'currency' | 'isAvailable' | 'businessId' | 'providerUserId' | 'imageId' | 'shortId'>>;
   include?: ProductIncludeOptions;
 }
 
 // Data for creating a new product
-// userId is mandatory for creating a product
-export type CreateProductData = Omit<NewProduct, 'productId' | 'createdAt' | 'updatedAt'> & {
-  userId: User['userId'];
-  channelId?: Product['channelId']; // channelId is optional
+// businessId is mandatory for creating a product
+export type CreateProductData = Omit<NewProduct, 'productId' | 'createdAt' | 'updatedAt' | 'providerUserId'> & {
+  businessId: Business['businessId']; // Must belong to a business
+  providerUserId?: User['providerUserId'] | null; // Optional, as it's nullable and denormalized
 };
 
 // Data for updating an existing product
-export type UpdateProductData = Partial<Omit<NewProduct, 'productId' | 'userId' | 'createdAt' | 'updatedAt'>>;
+// businessId should generally not be updatable. providerUserId can be.
+export type UpdateProductData = Partial<Omit<NewProduct, 'productId' | 'businessId' | 'createdAt' | 'updatedAt'>>;
 
 // Data for updating many products
 export interface UpdateManyProductsData {
@@ -47,8 +49,8 @@ export interface UpdateManyProductsData {
 // Filter options for operations like updateMany or deleteMany
 export interface ProductFilterOptions {
   ids?: Product['productId'][];
-  userId?: User['userId'];
-  channelId?: Product['channelId'];
+  businessId?: Business['businessId'];
+  providerUserId?: User['providerUserId'] | null;
   name?: Product['name'];
   isAvailable?: Product['isAvailable'];
   imageId?: Product['imageId'];
@@ -62,7 +64,8 @@ export interface ProductFilterOptions {
 
 // --- Related entity types for inclusion ---
 export type ProductWithIncludes = Product & {
-  user?: User;
-  connectedChannel?: ConnectedChannel | null; // Allow null for connectedChannel
+  business?: Business; // Relation to Business
+  userViaProviderId?: User | null; // Denormalized user
   orderItems?: (InferSelectModel<typeof orderItems> & { order?: InferSelectModel<typeof import('@/db/schema').orders> })[];
+  // connectedChannel removed
 };

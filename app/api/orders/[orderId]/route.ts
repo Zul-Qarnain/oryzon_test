@@ -1,12 +1,15 @@
 import { ordersService } from '@/backend/services/orders/orders.service';
 import { OrderIncludeOptions, UpdateOrderData } from '@/backend/services/orders/orders.types';
-import { parseIncludeQuery } from '../../utils';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 
+// Updated valid includes for an order
 const VALID_ORDER_INCLUDES: (keyof OrderIncludeOptions)[] = [
+  'business',
+  'userViaProviderId',
   'customer',
   'connectedChannel',
-  'user',
   'orderItems',
+  // 'user' (direct business user link) is removed
 ];
 
 export async function GET(

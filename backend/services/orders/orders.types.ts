@@ -1,9 +1,10 @@
-import { orders, customers, connectedChannels, users, orderItems, products, orderStatusEnum } from '@/db/schema';
+import { orders, customers, connectedChannels, users, orderItems, products, orderStatusEnum, businesses } from '@/db/schema';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { Customer } from '@/backend/services/customers/customers.types';
 import { ConnectedChannel } from '@/backend/services/channels/channels.types';
 import { User } from '@/backend/services/users/users.types';
 import { Product } from '@/backend/services/products/products.types';
+import { Business } from '@/backend/services/businesses/businesses.types';
 
 // Base Order type from schema
 export type Order = InferSelectModel<typeof orders>;
@@ -15,10 +16,12 @@ export type NewOrderItem = InferInsertModel<typeof orderItems>;
 
 // Options for including related entities for an Order
 export interface OrderIncludeOptions {
+  business?: boolean; // Order now belongs to a Business
+  userViaProviderId?: boolean; // For the denormalized user link
   customer?: boolean;
   connectedChannel?: boolean;
-  user?: boolean; // The business user
   orderItems?: { limit?: number; offset?: number; include?: { product?: boolean } } | boolean;
+  // user (direct link to business user) is removed, use business and userViaProviderId
 }
 
 // Options for GetOrderById
@@ -30,7 +33,7 @@ export interface GetOrderByIdOptions {
 export interface GetAllOrdersOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Order, 'customerId' | 'channelId' | 'userId' | 'orderStatus' | 'currency'>>;
+  filter?: Partial<Pick<Order, 'businessId' | 'providerUserId' | 'customerId' | 'channelId' | 'orderStatus' | 'currency'>>;
   include?: OrderIncludeOptions;
 }
 
@@ -40,15 +43,17 @@ export type CreateOrderItemData = Omit<NewOrderItem, 'orderItemId' | 'orderId'> 
 };
 
 // Data for creating a new Order
-export type CreateOrderData = Omit<NewOrder, 'orderId' | 'createdAt' | 'updatedAt'> & {
+export type CreateOrderData = Omit<NewOrder, 'orderId' | 'createdAt' | 'updatedAt' | 'providerUserId'> & {
+  businessId: Business['businessId'];
   customerId: Customer['customerId'];
   channelId: ConnectedChannel['channelId'];
-  userId: User['userId'];
+  providerUserId?: User['providerUserId'] | null; // Optional, as it's nullable and denormalized
   orderItems: CreateOrderItemData[]; // Array of order items
 };
 
 // Data for updating an existing Order
-export type UpdateOrderData = Partial<Pick<NewOrder, 'orderStatus' | 'shippingAddress' | 'billingAddress'>>;
+// businessId, customerId, channelId should generally not be updatable.
+export type UpdateOrderData = Partial<Pick<NewOrder, 'orderStatus' | 'shippingAddress' | 'billingAddress' | 'providerUserId'>>;
 
 // Data for updating many Orders
 export interface UpdateManyOrdersData {
@@ -57,23 +62,26 @@ export interface UpdateManyOrdersData {
 }
 
 // Filter options for operations like updateMany or deleteMany Orders
+// This is where more complex filters like date ranges and amount ranges are defined.
 export interface OrderFilterOptions {
   ids?: Order['orderId'][];
+  businessId?: Business['businessId'];
+  providerUserId?: User['providerUserId'] | null;
   customerId?: Customer['customerId'];
   channelId?: ConnectedChannel['channelId'];
-  userId?: User['userId'];
   orderStatus?: Order['orderStatus'];
-  minTotalAmount?: number;
-  maxTotalAmount?: number;
+  minTotalAmount?: number; // For range filtering
+  maxTotalAmount?: number; // For range filtering
   currency?: Order['currency'];
-  createdAtBefore?: Date;
-  createdAtAfter?: Date;
+  createdAtBefore?: Date; // For date range filtering
+  createdAtAfter?: Date; // For date range filtering
 }
 
 // --- Related entity types for inclusion ---
 export type OrderWithIncludes = Order & {
+  business?: Business;
+  userViaProviderId?: User | null;
   customer?: Customer;
-  connectedChannel?: ConnectedChannel;
-  user?: User;
+  connectedChannel?: ConnectedChannel | null; // Allow null for connectedChannel
   orderItems?: (OrderItem & { product?: Product })[];
 };

@@ -18,7 +18,7 @@ export interface ChannelContextType {
   error_channel: string | null;
   fetchChannel: (channelId: string, options?: { include?: string }) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
   fetchChannels: (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ConnectedChannelWithIncludes[]; total: number }>>;
-  createChannel: (data: Omit<CreateChannelData, 'providerUserId'>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
+  createChannel: (data: Omit<CreateChannelData, 'providerUserId'> & { businessId: string }) => Promise<ApiResponse<ConnectedChannelWithIncludes>>; // Added businessId
   updateChannel: (channelId: string, data: Partial<ConnectedChannel>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
   deleteChannel: (channelId: string) => Promise<ApiResponse<null>>;
   cleanError_Channel: () => void;
@@ -85,20 +85,23 @@ export const ChannelProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const createChannel = useCallback(
-    async (data: Omit<CreateChannelData, 'providerUserId'>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
+    // Ensure data includes businessId, providerUserId is now optional in CreateChannelData
+    async (data: Omit<CreateChannelData, 'providerUserId'> & { businessId: string }): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
       setChannelLoading(true);
       setErrorChannel(null);
 
-      if (!FUser || !FUser.uid) {
-        const errorMsg = "User is not logged in or provider information is missing.";
+      // FUser.uid will be used for the optional providerUserId field in CreateChannelData
+      // businessId must be provided in the 'data' argument.
+      if (!data.businessId) {
+        const errorMsg = "Business ID is required to create a channel.";
         setErrorChannel(errorMsg);
         setChannelLoading(false);
-        return { error: errorMsg, result: null, statusCode: 401 };
+        return { error: errorMsg, result: null, statusCode: 400 };
       }
-
+      
       const completeChannelData: CreateChannelData = {
-        ...data,
-        providerUserId: FUser.uid,
+        ...data, // This includes businessId and other channel fields
+        providerUserId: FUser?.uid || null, // Set providerUserId from FUser, or null if not available
       };
 
       const response = await request<ConnectedChannelWithIncludes>("POST", "/api/channels", completeChannelData);

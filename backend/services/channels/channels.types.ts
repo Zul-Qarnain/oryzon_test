@@ -1,10 +1,11 @@
-import { connectedChannels, users, customers as customersSchema, orders as ordersSchema, chats as chatsSchema, platformTypeEnum } from '@/db/schema'; // Aliased schema imports to avoid name clashes if types are also named the same
+import { connectedChannels, users, customers as customersSchema, orders as ordersSchema, chats as chatsSchema, platformTypeEnum, businesses } from '@/db/schema';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { User } from '@/backend/services/users/users.types';
 import { Customer } from '@/backend/services/customers/customers.types';
 import { Order } from '@/backend/services/orders/orders.types';
 import { Chat } from '@/backend/services/chats/chats.types';
-import { Product } from '@/backend/services/products/products.types'; // Import Product type
+import { Product } from '@/backend/services/products/products.types';
+import { Business } from '@/backend/services/businesses/businesses.types'; // Import Business type
 
 // Base ConnectedChannel type from schema
 export type ConnectedChannel = InferSelectModel<typeof connectedChannels>;
@@ -12,11 +13,12 @@ export type NewConnectedChannel = InferInsertModel<typeof connectedChannels>;
 
 // Options for including related entities
 export interface ChannelIncludeOptions {
-  user?: boolean;
+  business?: boolean; // Channel now belongs to a Business
+  userViaProviderId?: boolean; // For the denormalized user link
   customers?: { limit?: number; offset?: number } | boolean;
   orders?: { limit?: number; offset?: number } | boolean;
   chats?: { limit?: number; offset?: number } | boolean;
-  products?: { limit?: number; offset?: number } | boolean; // Add products include option
+  products?: { limit?: number; offset?: number } | boolean;
 }
 
 // Options for GetById
@@ -28,18 +30,21 @@ export interface GetChannelByIdOptions {
 export interface GetAllChannelsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<ConnectedChannel, 'providerUserId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
+  filter?: Partial<Pick<ConnectedChannel, 'businessId' | 'providerUserId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
   orderBy?: keyof ConnectedChannel;
   include?: ChannelIncludeOptions;
 }
 
 // Data for creating a new channel
-export type CreateChannelData = Omit<NewConnectedChannel, 'channelId' | 'createdAt' | 'updatedAt'> & {
-  providerUserId: User['providerUserId']; // Ensure providerUserId is provided
+export type CreateChannelData = Omit<NewConnectedChannel, 'channelId' | 'createdAt' | 'updatedAt' | 'providerUserId'> & {
+  businessId: Business['businessId']; // Must belong to a business
+  providerUserId?: User['providerUserId'] | null; // Optional, as it's nullable and denormalized
 };
 
 // Data for updating an existing channel
-export type UpdateChannelData = Partial<Omit<NewConnectedChannel, 'channelId' | 'providerUserId' | 'createdAt' | 'updatedAt'>>;
+// businessId should generally not be updatable for an existing channel.
+// providerUserId can be updated if needed.
+export type UpdateChannelData = Partial<Omit<NewConnectedChannel, 'channelId' | 'businessId' | 'createdAt' | 'updatedAt'>>;
 
 // Data for updating many channels
 export interface UpdateManyChannelsData {
@@ -50,11 +55,12 @@ export interface UpdateManyChannelsData {
 // Filter options for operations like updateMany or deleteMany
 export interface ChannelFilterOptions {
   ids?: ConnectedChannel['channelId'][];
-  providerUserId?: User['providerUserId'];
+  businessId?: Business['businessId'];
+  providerUserId?: User['providerUserId'] | null;
   platformType?: ConnectedChannel['platformType'];
   isActive?: ConnectedChannel['isActive'];
-  channelName?: ConnectedChannel['channelName']; // Added channelName for filtering
-  description?: ConnectedChannel['description']; // Added description for filtering
+  channelName?: ConnectedChannel['channelName'];
+  description?: ConnectedChannel['description'];
   platformSpecificId?: ConnectedChannel['platformSpecificId'];
   createdAtBefore?: Date;
   createdAtAfter?: Date;
@@ -62,9 +68,10 @@ export interface ChannelFilterOptions {
 
 // --- Related entity types for inclusion ---
 export type ConnectedChannelWithIncludes = ConnectedChannel & {
-  user?: User;
+  business?: Business; // Relation to Business
+  userViaProviderId?: User | null; // Denormalized user
   customers?: Customer[];
   orders?: Order[];
   chats?: Chat[];
-  products?: Product[]; // Add products to related entity types
+  products?: Product[];
 };

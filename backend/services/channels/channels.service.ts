@@ -1,7 +1,8 @@
 import { db } from '@/db';
-import { connectedChannels, users, customers, orders, chats, products } from '@/db/schema'; // Added products
+import { connectedChannels, users, customers, orders, chats, products, businesses } from '@/db/schema'; // Added businesses
 import {
   ConnectedChannel,
+  NewConnectedChannel, // Added import for NewConnectedChannel
   CreateChannelData,
   UpdateChannelData,
   GetChannelByIdOptions,
@@ -17,8 +18,20 @@ export class ChannelsService {
 
   async createChannel(data: CreateChannelData): Promise<ConnectedChannel> {
     // Note: access_token and refresh_token should be encrypted before saving
-    // This service assumes they are already encrypted if they need to be.
-    const [newChannel] = await db.insert(connectedChannels).values(data).returning();
+    const newChannelData: NewConnectedChannel = {
+      businessId: data.businessId,
+      platformType: data.platformType,
+      platformSpecificId: data.platformSpecificId,
+      providerUserId: data.providerUserId, // Can be null or undefined
+      // Optional fields from CreateChannelData
+      description: data.description,
+      channelName: data.channelName,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      tokenExpiresAt: data.tokenExpiresAt,
+      isActive: data.isActive,
+    };
+    const [newChannel] = await db.insert(connectedChannels).values(newChannelData).returning();
     return newChannel;
   }
 
@@ -26,11 +39,11 @@ export class ChannelsService {
     const query = db.query.connectedChannels.findFirst({
       where: eq(connectedChannels.channelId, channelId),
       with: {
-        user: options?.include?.user ? true : undefined,
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined, // For denormalized user
         customers: options?.include?.customers 
           ? { 
               limit: typeof options.include.customers === 'boolean' ? undefined : options.include.customers.limit,
-              // offset not directly supported in nested 'with'
             } 
           : undefined,
         orders: options?.include?.orders 
@@ -43,11 +56,7 @@ export class ChannelsService {
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
             } 
           : undefined,
-        products: options?.include?.products // Add products include
-          ? {
-              limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit,
-            }
-          : undefined,
+        // products: relation not directly on connectedChannels in schema, will be undefined if requested via this type
       }
     });
     const channel = await query;
@@ -58,10 +67,13 @@ export class ChannelsService {
     const page = options?.limit ?? 10;
     const offset = options?.offset ?? 0;
 
-    const filter = options?.filter as ChannelFilterOptions | undefined;
+    const filter = options?.filter as ChannelFilterOptions | undefined; // Type is Partial<Pick<ConnectedChannel, ...>>
     const conditions = [];
 
-    if (filter?.providerUserId) {
+    if (filter?.businessId) {
+      conditions.push(eq(connectedChannels.businessId, filter.businessId));
+    }
+    if (filter?.providerUserId) { // This filters the denormalized providerUserId on connectedChannels
       conditions.push(eq(connectedChannels.providerUserId, filter.providerUserId));
     }
     if (filter?.platformType) {
@@ -88,11 +100,12 @@ export class ChannelsService {
 
 
     const channelsQuery = db.query.connectedChannels.findMany({
-      where: and(...conditions),
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       limit: page,
       offset: offset,
       with: {
-        user: options?.include?.user ? true : undefined,
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         customers: options?.include?.customers 
           ? { 
               limit: typeof options.include.customers === 'boolean' ? undefined : options.include.customers.limit,
@@ -108,16 +121,13 @@ export class ChannelsService {
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
             } 
           : undefined,
-        products: options?.include?.products // Add products include
-          ? {
-              limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit,
-            }
-          : undefined,
+        // products: relation not directly on connectedChannels in schema
       },
       orderBy: [desc(connectedChannels.createdAt)]
     });
 
-    const totalQuery = db.select({ value: count() }).from(connectedChannels).where(and(...conditions));
+    const totalQuery = db.select({ value: count() }).from(connectedChannels).where(conditions.length > 0 ? and(...conditions) : undefined);
+    // Removed duplicate totalQuery declaration
 
     const [data, totalResult] = await Promise.all([channelsQuery, totalQuery]);
     
@@ -125,11 +135,11 @@ export class ChannelsService {
   }
 
   async updateChannel(channelId: string, data: UpdateChannelData): Promise<ConnectedChannel | null> {
-    // Ensure userId is not updated this way
-    const { ...updateData } = data;
+    // businessId is not part of UpdateChannelData and should not be updated here.
+    // providerUserId can be updated if present in data.
     const [updatedChannel] = await db
       .update(connectedChannels)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(connectedChannels.channelId, channelId))
       .returning();
     return updatedChannel || null;

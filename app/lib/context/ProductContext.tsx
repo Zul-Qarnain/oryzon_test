@@ -1,8 +1,9 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Product, ProductWithIncludes } from "@/backend/services/products/products.types";
+import { Product, ProductWithIncludes, CreateProductData } from "@/backend/services/products/products.types"; // Added CreateProductData
 import type { ProductFilterOptions as ProductFilter } from "@/backend/services/products/products.types";
-import { useFetchContext, ApiResponse } from "./FetchContext"; // Import useFetchContext and ApiResponse
+import { useFetchContext, ApiResponse } from "./FetchContext";
+import { useUserContext } from "./UserContext"; // Import useUserContext
 
 export interface PaginationOptions {
   limit?: number;
@@ -17,7 +18,7 @@ export interface ProductContextType {
   error_product: string | null;
   fetchProduct: (productId: string, options?: { include?: string }) => Promise<ApiResponse<ProductWithIncludes>>;
   fetchProducts: (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ProductWithIncludes[]; total: number }>>;
-  createProduct: (data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
+  createProduct: (data: Omit<CreateProductData, 'providerUserId'> & { businessId: string }) => Promise<ApiResponse<ProductWithIncludes>>; // Updated createProduct data type
   updateProduct: (productId: string, data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
   deleteProduct: (productId: string) => Promise<ApiResponse<null>>;
   cleanError_Product: () => void;
@@ -26,7 +27,8 @@ export interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
-  const { request } = useFetchContext(); // Get request from FetchContext
+  const { request } = useFetchContext();
+  const { FUser } = useUserContext(); // Get FUser from UserContext
   const [product, setProduct] = useState<ProductWithIncludes | null>(null);
   const [products, setProducts] = useState<ProductWithIncludes[]>([]);
   const [total_product, setTotalProduct] = useState(0);
@@ -82,19 +84,39 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     [request]
   );
 
-  const createProduct = useCallback(async (data: Partial<Product>): Promise<ApiResponse<ProductWithIncludes>> => {
-    setProductLoading(true);
-    setErrorProduct(null);
-    const response = await request<ProductWithIncludes>("POST", "/api/products", data);
+  const createProduct = useCallback(
+    async (data: Omit<CreateProductData, 'providerUserId'> & { businessId: string }): Promise<ApiResponse<ProductWithIncludes>> => {
+      setProductLoading(true);
+      setErrorProduct(null);
 
-    if (response.error) {
-      setErrorProduct(response.error);
-    } else {
-      setProduct(response.result); // Optionally update current product or refetch list
-    }
-    setProductLoading(false);
-    return response;
-  }, [request]);
+      if (!data.businessId) {
+        const errorMsg = "Business ID is required to create a product.";
+        setErrorProduct(errorMsg);
+        setProductLoading(false);
+        return { error: errorMsg, result: null, statusCode: 400 };
+      }
+
+      const completeProductData: CreateProductData = {
+        ...data, // This includes businessId and other product fields
+        providerUserId: FUser?.uid || null, // Set providerUserId from FUser, or null if not available
+      };
+
+      const response = await request<ProductWithIncludes>("POST", "/api/products", completeProductData);
+
+      if (response.error) {
+        setErrorProduct(response.error);
+      } else {
+        setProduct(response.result);
+        if (response.result) {
+          setProducts(prevProducts => [response.result!, ...prevProducts.filter(p => p.productId !== response.result!.productId)]);
+          setTotalProduct(prevTotal => prevTotal + 1);
+        }
+      }
+      setProductLoading(false);
+      return response;
+    },
+    [request, FUser]
+  );
 
   const updateProduct = useCallback(async (productId: string, data: Partial<Product>): Promise<ApiResponse<ProductWithIncludes>> => {
     setProductLoading(true);

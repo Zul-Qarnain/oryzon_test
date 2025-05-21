@@ -1,7 +1,8 @@
 import { db } from '@/db';
-import { products,} from '@/db/schema'; // users and orderItems might be needed by Drizzle for relational queries
+import { products, users, businesses, orderItems } from '@/db/schema'; // Ensure all needed tables are imported
 import {
   Product,
+  NewProduct, // Added import for NewProduct
   CreateProductData,
   UpdateProductData,
   GetProductByIdOptions,
@@ -16,7 +17,20 @@ export class ProductsService {
   constructor() {}
 
   async createProduct(data: CreateProductData): Promise<Product> {
-    const [newProduct] = await db.insert(products).values(data).returning();
+    const newProductData: NewProduct = {
+      businessId: data.businessId,
+      providerUserId: data.providerUserId, // Can be null or undefined
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      currency: data.currency,
+      sku: data.sku,
+      imageUrl: data.imageUrl,
+      imageId: data.imageId,
+      shortId: data.shortId,
+      isAvailable: data.isAvailable,
+    };
+    const [newProduct] = await db.insert(products).values(newProductData).returning();
     return newProduct;
   }
 
@@ -24,8 +38,8 @@ export class ProductsService {
     const query = db.query.products.findFirst({
       where: eq(products.productId, productId),
       with: {
-        user: options?.include?.user ? true : undefined,
-        connectedChannel: options?.include?.connectedChannel ? true : undefined,
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined, // For denormalized user
         orderItems: options?.include?.orderItems
           ? {
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
@@ -46,18 +60,19 @@ export class ProductsService {
     const offset = options?.offset ?? 0;
 
     // Explicitly type the filter object using ProductFilterOptions
-    const filter: ProductFilterOptions | undefined = options?.filter as ProductFilterOptions | undefined;
+    const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
 
     if (filter?.name) {
       conditions.push(ilike(products.name, `%${filter.name}%`));
     }
-    if (filter?.userId) {
-      conditions.push(eq(products.userId, filter.userId));
+    if (filter?.businessId) { // Filter by businessId
+      conditions.push(eq(products.businessId, filter.businessId));
     }
-    if (filter?.channelId) {
-      conditions.push(eq(products.channelId, filter.channelId));
+    if (filter?.providerUserId) { // Filter by denormalized providerUserId
+      conditions.push(eq(products.providerUserId, filter.providerUserId));
     }
+    // Removed old userId and channelId filters
     if (filter?.isAvailable !== undefined) {
       conditions.push(eq(products.isAvailable, filter.isAvailable));
     }
@@ -84,12 +99,12 @@ export class ProductsService {
     }
 
     const productsQuery = db.query.products.findMany({
-      where: and(...conditions),
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       limit: page,
       offset: offset,
       with: {
-        user: options?.include?.user ? true : undefined,
-        connectedChannel: options?.include?.connectedChannel ? true : undefined,
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         orderItems: options?.include?.orderItems
           ? {
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
@@ -103,7 +118,7 @@ export class ProductsService {
       orderBy: [desc(products.createdAt)] // Default order
     });
 
-    const totalQuery = db.select({ value: count() }).from(products).where(and(...conditions));
+    const totalQuery = db.select({ value: count() }).from(products).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([productsQuery, totalQuery]);
     
@@ -111,11 +126,11 @@ export class ProductsService {
   }
 
   async updateProduct(productId: string, data: UpdateProductData): Promise<Product | null> {
-    // Ensure userId is not updated this way
-    const { ...updateData } = data; 
+    // businessId is not part of UpdateProductData and should not be updated here.
+    // providerUserId can be updated if present in data.
     const [updatedProduct] = await db
       .update(products)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(products.productId, productId))
       .returning();
     return updatedProduct || null;

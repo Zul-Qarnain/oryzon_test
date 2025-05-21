@@ -1,7 +1,8 @@
 import { db } from '@/db';
-import { customers, connectedChannels, orders, chats } from '@/db/schema';
+import { customers, connectedChannels, orders, chats, businesses, users } from '@/db/schema'; // Added businesses and users
 import {
   Customer,
+  NewCustomer, // Added import for NewCustomer
   CreateCustomerData,
   UpdateCustomerData,
   GetCustomerByIdOptions,
@@ -16,7 +17,18 @@ export class CustomersService {
   constructor() {}
 
   async createCustomer(data: CreateCustomerData): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(data).returning();
+    const newCustomerData: NewCustomer = {
+      businessId: data.businessId,
+      channelId: data.channelId,
+      providerUserId: data.providerUserId, // Can be null or undefined
+      platformCustomerId: data.platformCustomerId,
+      fullName: data.fullName,
+      // email: data.email, // Property 'email' does not exist on type 'CreateCustomerData'.
+      // phone: data.phone, // Property 'phone' does not exist on type 'CreateCustomerData'.
+      profilePictureUrl: data.profilePictureUrl, // Renamed from avatarUrl, ensure CreateCustomerData has this
+      // firstSeenAt and lastSeenAt are handled by DB defaults or updated separately
+    };
+    const [newCustomer] = await db.insert(customers).values(newCustomerData).returning();
     return newCustomer;
   }
 
@@ -24,6 +36,8 @@ export class CustomersService {
     const query = db.query.customers.findFirst({
       where: eq(customers.customerId, customerId),
       with: {
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
         orders: options?.include?.orders 
           ? { 
@@ -45,9 +59,15 @@ export class CustomersService {
     const page = options?.limit ?? 10;
     const offset = options?.offset ?? 0;
 
-    const filter = options?.filter as CustomerFilterOptions | undefined; // Use the more comprehensive filter type
+    const filter = options?.filter as CustomerFilterOptions | undefined; // Type is Partial<Pick<Customer, ...>>
     const conditions = [];
 
+    if (filter?.businessId) {
+      conditions.push(eq(customers.businessId, filter.businessId));
+    }
+    if (filter?.providerUserId) { // Filter by denormalized providerUserId
+      conditions.push(eq(customers.providerUserId, filter.providerUserId));
+    }
     if (filter?.channelId) {
       conditions.push(eq(customers.channelId, filter.channelId));
     }
@@ -72,10 +92,12 @@ export class CustomersService {
 
 
     const customersQuery = db.query.customers.findMany({
-      where: and(...conditions),
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       limit: page,
       offset: offset,
       with: {
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
         orders: options?.include?.orders 
           ? { 
@@ -91,7 +113,7 @@ export class CustomersService {
       orderBy: [desc(customers.lastSeenAt)] 
     });
 
-    const totalQuery = db.select({ value: count() }).from(customers).where(and(...conditions));
+    const totalQuery = db.select({ value: count() }).from(customers).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([customersQuery, totalQuery]);
     
@@ -99,6 +121,8 @@ export class CustomersService {
   }
 
   async updateCustomer(customerId: string, data: UpdateCustomerData): Promise<Customer | null> {
+    // businessId and channelId are not part of UpdateCustomerData and should not be updated here.
+    // providerUserId can be updated if present in data.
     const [updatedCustomer] = await db
       .update(customers)
       .set({ ...data, lastSeenAt: new Date() }) // Also update lastSeenAt on any update
