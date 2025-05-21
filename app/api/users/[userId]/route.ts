@@ -1,11 +1,13 @@
 import { usersService } from '@/backend/services/users/users.service';
 import { UserIncludeOptions, UpdateUserData } from '@/backend/services/users/users.types';
-import { parseIncludeQuery } from '../../utils';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 
+// Updated valid includes for a user
 const VALID_USER_INCLUDES: (keyof UserIncludeOptions)[] = [
-  'connectedChannels',
-  'products',
-  'orders',
+  'businesses',
+  // 'connectedChannels', // These were placeholders or denormalized, focusing on 'businesses'
+  // 'products',
+  // 'orders',
 ];
 
 export async function GET(

@@ -1,7 +1,8 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Chat, ChatWithIncludes, ChatFilterOptions } from "@/backend/services/chats/chats.types";
+import { Chat, ChatWithIncludes, ChatFilterOptions, CreateChatData, UpdateChatData } from "@/backend/services/chats/chats.types"; // Added CreateChatData, UpdateChatData
 import { useFetchContext, ApiResponse } from "./FetchContext";
+import { useUserContext } from "./UserContext"; // Import useUserContext
 
 export interface PaginationOptions {
   limit?: number;
@@ -16,8 +17,8 @@ export interface ChatContextType {
   error_chat: string | null;
   fetchChat: (chatId: string, options?: { include?: string }) => Promise<ApiResponse<ChatWithIncludes>>;
   fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>>;
-  createChat: (data: Partial<Omit<Chat, 'userId'>>) => Promise<ApiResponse<ChatWithIncludes>>;
-  updateChat: (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => Promise<ApiResponse<ChatWithIncludes>>;
+  createChat: (data: Omit<CreateChatData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; }) => Promise<ApiResponse<ChatWithIncludes>>; // Updated createChat data type
+  updateChat: (chatId: string, data: UpdateChatData) => Promise<ApiResponse<ChatWithIncludes>>; // Updated updateChat data type
   deleteChat: (chatId: string) => Promise<ApiResponse<null>>;
   cleanError_Chat: () => void;
 }
@@ -26,6 +27,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const { request } = useFetchContext();
+  const { FUser } = useUserContext(); // Get FUser from UserContext
   const [chat, setChat] = useState<ChatWithIncludes | null>(null);
   const [chats, setChats] = useState<ChatWithIncludes[]>([]);
   const [total_chat, setTotalChat] = useState(0);
@@ -81,21 +83,41 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     [request]
   );
 
-  const createChat = useCallback(async (data: Partial<Omit<Chat, 'userId'>>): Promise<ApiResponse<ChatWithIncludes>> => {
-    setChatLoading(true);
-    setErrorChat(null);
-    const response = await request<ChatWithIncludes>("POST", "/api/chats", data);
+  const createChat = useCallback(
+    async (data: Omit<CreateChatData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; }): Promise<ApiResponse<ChatWithIncludes>> => {
+      setChatLoading(true);
+      setErrorChat(null);
 
-    if (response.error) {
-      setErrorChat(response.error);
-    } else {
-      setChat(response.result); // Optionally update current chat or refetch list
-    }
-    setChatLoading(false);
-    return response;
-  }, [request]);
+      if (!data.businessId || !data.customerId || !data.channelId) {
+        const errorMsg = "businessId, customerId, and channelId are required.";
+        setErrorChat(errorMsg);
+        setChatLoading(false);
+        return { error: errorMsg, result: null, statusCode: 400 };
+      }
+      
+      const completeChatData: CreateChatData = {
+        ...data,
+        providerUserId: FUser?.uid || null, // Set providerUserId from FUser, or null if not available
+      };
 
-  const updateChat = useCallback(async (chatId: string, data: Partial<Omit<Chat, 'userId'>>): Promise<ApiResponse<ChatWithIncludes>> => {
+      const response = await request<ChatWithIncludes>("POST", "/api/chats", completeChatData);
+
+      if (response.error) {
+        setErrorChat(response.error);
+      } else {
+        setChat(response.result);
+        if (response.result) {
+          setChats(prevChats => [response.result!, ...prevChats.filter(c => c.chatId !== response.result!.chatId)]);
+          setTotalChat(prevTotal => prevTotal + 1);
+        }
+      }
+      setChatLoading(false);
+      return response;
+    },
+    [request, FUser]
+  );
+
+  const updateChat = useCallback(async (chatId: string, data: UpdateChatData): Promise<ApiResponse<ChatWithIncludes>> => {
     setChatLoading(true);
     setErrorChat(null);
     const response = await request<ChatWithIncludes>("PUT", `/api/chats/${chatId}`, data);

@@ -1,12 +1,14 @@
 import { chatsService } from '@/backend/services/chats/chats.service';
-import { ChatIncludeOptions, GetAllChatsOptions, CreateChatData } from '@/backend/services/chats/chats.types';
-import { parseIncludeQuery, parsePaginationParams, getStringFilterParam } from '../utils';
+import { ChatIncludeOptions, GetAllChatsOptions, CreateChatData, Chat } from '@/backend/services/chats/chats.types'; // Added Chat
+import { parseIncludeQuery, parsePaginationParams, getStringFilterParam } from '@/app/api/utils'; // Corrected import path
 import { chatStatusEnum } from '@/db/schema';
 
+// Updated valid includes for a chat
 const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
+  'business',
+  'userViaProviderId',
   'customer',
   'connectedChannel',
-  // 'user', // userId removed from chats
   'messages',
 ];
 
@@ -24,9 +26,10 @@ export async function GET(request: Request) {
     const includeQuery = searchParams.get('include');
     const { limit, offset } = parsePaginationParams(searchParams, 10, 0, 100);
 
+    const businessId = getStringFilterParam(searchParams, 'businessId'); // New filter
+    const providerUserId = getStringFilterParam(searchParams, 'providerUserId'); // New filter
     const customerId = getStringFilterParam(searchParams, 'customerId');
     const channelId = getStringFilterParam(searchParams, 'channelId');
-    // const userId = getStringFilterParam(searchParams, 'userId'); // userId removed from chats
     const status = getStringFilterParam(searchParams, 'status');
 
     const includeOptions = parseIncludeQuery<ChatIncludeOptions, keyof ChatIncludeOptions>(
@@ -38,13 +41,15 @@ export async function GET(request: Request) {
       include: includeOptions,
       limit,
       offset,
-      filter: {},
+      filter: {} as Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'customerId' | 'channelId' | 'status'>>, // Initialize filter
     };
 
+    if (businessId) options.filter!.businessId = businessId;
+    if (providerUserId) options.filter!.providerUserId = providerUserId;
     if (customerId) options.filter!.customerId = customerId;
     if (channelId) options.filter!.channelId = channelId;
-    // if (userId) options.filter!.userId = userId; // userId removed from chats
-    if (status) options.filter!.status = status as ChatStatus;
+    if (status && isChatStatus(status)) options.filter!.status = status;
+
 
     const result = await chatsService.getAllChats(options);
     return new Response(JSON.stringify(result), { status: 200 });
@@ -58,10 +63,17 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as CreateChatData;
     // TODO: Add validation for body (e.g. with Zod)
+    // Ensure businessId, customerId, and channelId are provided
+    if (!body.businessId || !body.customerId || !body.channelId) {
+      return new Response(JSON.stringify({ message: 'businessId, customerId, and channelId are required' }), { status: 400 });
+    }
+    // providerUserId is optional
+
     const newChat = await chatsService.createChat(body);
     return new Response(JSON.stringify(newChat), { status: 201 });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
+    console.error('Error creating chat:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(JSON.stringify({ message: 'Internal server error', error: errorMessage }), { status: 500 });
   }
 }

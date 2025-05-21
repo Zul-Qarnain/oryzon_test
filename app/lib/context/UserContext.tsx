@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
-import { User as DbUser, UserWithIncludes, CreateUserData } from "@/backend/services/users/users.types";
+import { User as DbUser, UserWithIncludes, CreateUserData, UpdateUserData } from "@/backend/services/users/users.types"; // Added UpdateUserData
 import type { UserFilterOptions as UserFilter } from "@/backend/services/users/users.types";
 import { auth } from '@/app/lib/firebase';
 import { useFetchContext, ApiResponse } from "./FetchContext"; // Import useFetchContext and ApiResponse
@@ -31,8 +31,8 @@ export interface UserContextType {
   error_user: string | null;
   fetchUser: (userId: string, options?: { include?: string }) => Promise<ApiResponse<UserWithIncludes>>;
   fetchUsers: (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: UserWithIncludes[]; total: number }>>;
-  createUser: (data: Partial<DbUser>) => Promise<ApiResponse<UserWithIncludes>>;
-  updateUser: (userId: string, data: Partial<DbUser>) => Promise<ApiResponse<UserWithIncludes>>;
+  createUser: (data: CreateUserData) => Promise<ApiResponse<UserWithIncludes>>; // Changed to CreateUserData
+  updateUser: (userId: string, data: UpdateUserData) => Promise<ApiResponse<UserWithIncludes>>; // Changed to UpdateUserData
   deleteUser: (userId: string) => Promise<ApiResponse<null>>; // Null for successful deletion with 204
   cleanError_User: () => void;
   loginWithEmail: (email: string, password: string) => Promise<FirebaseUser | null>;
@@ -53,41 +53,46 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [FUser, setFUser] = useState<FirebaseUser | null>(null);
   const [users, setUsers] = useState<UserWithIncludes[]>([]);
   const [total_user, setTotalUser] = useState(0);
-  const [user_loading, setUserLoading] = useState(true); // This can be driven by FetchContext's loading if preferred
+  const [user_loading, setUserLoading] = useState(true);
   const [error_user, setErrorUser] = useState<string | null>(null);
 
+  // Effect for Firebase Auth state changes
   useEffect(() => {
     setUserLoading(true);
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFUser(fbUser);
-      if (fbUser) {
-        setUser({
-          name: fbUser?.displayName || "",
-          email: fbUser?.email || "",
-          phone: fbUser?.phoneNumber || "",
-          providerUserId: fbUser?.uid || "",
-          loginProvider: fbUser?.providerData[0]?.providerId || 'EMAIL',
-        } as UserWithIncludes);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setFUser(firebaseUser);
+      if (firebaseUser) {
         try {
-          const token = await getIdToken(fbUser);
-          setFirebaseToken(token); // Set token in FetchContext
-          // Optionally, sync user with backend here or let components trigger it
-          console.log("Firebase user detected, token set:", fbUser.uid);
-          // Example: await syncUserWithBackend(fbUser, 'LOGIN', fbUser.providerData[0]?.providerId as any || 'EMAIL');
+          const token = await getIdToken(firebaseUser);
+          setFirebaseToken(token);
+          // Attempt to fetch existing user data from backend if not already done by login/signup
+          // This handles cases where user is already logged in (session persistence)
+          if (!user) { // Avoid refetching if user is already set by a login/signup flow
+            console.log("Firebase user detected on auth state change, attempting to sync with backend:", firebaseUser.uid);
+            const providerId = firebaseUser.providerData[0]?.providerId;
+            let loginProviderValue: typeof loginProviderEnum.enumValues[number] = 'EMAIL'; // Default
+            if (providerId === 'google.com') loginProviderValue = 'GOOGLE';
+            else if (providerId === 'facebook.com') loginProviderValue = 'FACEBOOK';
+            // Add other providers as needed
+
+            // This sync will attempt to fetch or create the user.
+            // Business creation is handled separately after signup.
+            await syncUserWithBackend(firebaseUser, 'LOGIN', loginProviderValue /*, businessName if available from a persisted state, though unlikely here */);
+          }
         } catch (error) {
-          console.error("Error getting Firebase token:", error);
+          console.error("Error during Firebase auth state change processing:", error);
           setFirebaseToken(null);
-          setUser(null);
+          setUser(null); // Clear backend user if token/sync fails
         }
       } else {
-        setFirebaseToken(null); // Clear token in FetchContext
+        setFirebaseToken(null);
         setUser(null);
-        
+        setFUser(null);
       }
       setUserLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [setFirebaseToken, user]); // Added user and setFirebaseToken to dependencies
 
   const fetchUser = useCallback(async (userId: string, options?: { include?: string }): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
@@ -134,20 +139,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return response;
   }, [request]);
 
-  const createUser = useCallback(async (data: Partial<DbUser>): Promise<ApiResponse<UserWithIncludes>> => {
+  const createUser = useCallback(async (data: CreateUserData): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
     setErrorUser(null);
+    // Basic validation, though backend should also validate
+    if (!data.name || (!data.email && !data.providerUserId)) {
+        const errorMsg = "Name and either Email or Provider User ID are required.";
+        setErrorUser(errorMsg);
+        setUserLoading(false);
+        return { error: errorMsg, result: null, statusCode: 400 };
+    }
     const response = await request<UserWithIncludes>("POST", "/api/users", data);
     if (response.error) {
       setErrorUser(response.error);
     } else {
       setUser(response.result); // Set the created user as the current user
+      if (response.result) { // Also add/update in the local list of users
+        setUsers(prevUsers => [response.result!, ...prevUsers.filter(u => u.userId !== response.result!.userId)]);
+        setTotalUser(prevTotal => prevTotal + 1); // Assuming new user means total increases
+      }
     }
     setUserLoading(false);
     return response;
   }, [request]);
 
-  const updateUser = useCallback(async (userId: string, data: Partial<DbUser>): Promise<ApiResponse<UserWithIncludes>> => {
+  const updateUser = useCallback(async (userId: string, data: UpdateUserData): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
     setErrorUser(null);
     const response = await request<UserWithIncludes>("PUT", `/api/users/${userId}`, data);
@@ -210,10 +226,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           email: firebaseUser.email || undefined,
           providerUserId: firebaseUser.uid,
           loginProvider: provider,
-          businessName: businessName || firebaseUser.displayName || 'Default Business',
+          // businessName is no longer part of CreateUserData
+          // TODO: Use 'businessName' parameter to create a Business entity separately after user creation.
         };
+        // The check for businessName during email signup is now less about CreateUserData
+        // and more about the overall signup flow requiring a business.
         if (provider === 'EMAIL' && !businessName) {
-          throw new Error("Business name is required for email sign up.");
+          // This error might be better handled before calling syncUserWithBackend,
+          // or this function could return a specific status indicating business creation is pending.
+          throw new Error("Business name is required for the signup process, though not directly for user creation.");
         }
         
         const createResp = await request<UserWithIncludes>("POST", "/api/users", userData);

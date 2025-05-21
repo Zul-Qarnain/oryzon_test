@@ -1,5 +1,5 @@
 import { db } from '@/db'; // Using @ alias, points to db/index.ts
-import { users} from '@/db/schema'; // Using @ alias
+import { users, businesses } from '@/db/schema'; // Using @ alias, added businesses
 import {
   User,
   CreateUserData,
@@ -7,10 +7,10 @@ import {
   GetUserByIdOptions,
   GetAllUsersOptions,
   UserFilterOptions,
-  UpdateManyUsersData,
+  // UpdateManyUsersData, // Removed as per user's edit in users.types.ts
   UserWithIncludes,
 } from './users.types';
-import { and, count, eq, ilike, inArray } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, desc } from 'drizzle-orm'; // Added desc
 // Removed unused: sql, alias
 
 export class UsersService {
@@ -26,9 +26,9 @@ export class UsersService {
     const query = db.query.users.findFirst({
       where: eq(users.userId, userId),
       with: {
-        connectedChannels: options?.include?.connectedChannels ? { limit: typeof options.include.connectedChannels === 'boolean' ? undefined : options.include.connectedChannels.limit ?? 10 } : undefined,
-        products: options?.include?.products ? { limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit ?? 10 } : undefined,
-        orders: options?.include?.orders ? { limit: typeof options.include.orders === 'boolean' ? undefined : options.include.orders.limit ?? 10 } : undefined
+        businesses: options?.include?.businesses ? (typeof options.include.businesses === 'boolean' ? true : { limit: options.include.businesses.limit ?? 10 /* offset not supported here */ }) : undefined,
+        // connectedChannels, products, orders were placeholders for direct relations or denormalized ones.
+        // Focusing on 'businesses' as per UserIncludeOptions.
       }
     });
     const user = await query;
@@ -43,26 +43,33 @@ export class UsersService {
     if (options?.filter?.email) {
       conditions.push(ilike(users.email, `%${options.filter.email}%`));
     }
-    if (options?.filter?.businessName) {
-      conditions.push(ilike(users.businessName, `%${options.filter.businessName}%`));
-    }
+    // businessName filter removed as it's no longer on the user model
     if (options?.filter?.loginProvider) {
       conditions.push(eq(users.loginProvider, options.filter.loginProvider));
     }
+    if (options?.filter?.providerUserId) {
+      conditions.push(eq(users.providerUserId, options.filter.providerUserId));
+    }
+    if (options?.filter?.name) {
+      conditions.push(ilike(users.name, `%${options.filter.name}%`));
+    }
+    if (options?.filter?.phone) {
+      conditions.push(ilike(users.phone, `%${options.filter.phone}%`));
+    }
+
 
     const usersQuery = db.query.users.findMany({
-      where: and(...conditions),
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       limit: page,
       offset: offset,
       with: {
-        connectedChannels: options?.include?.connectedChannels ? { limit: typeof options.include.connectedChannels === 'boolean' ? undefined : options.include.connectedChannels.limit ?? 10 } : undefined,
-        products: options?.include?.products ? { limit: typeof options.include.products === 'boolean' ? undefined : options.include.products.limit ?? 10 } : undefined,
-        orders: options?.include?.orders ? { limit: typeof options.include.orders === 'boolean' ? undefined : options.include.orders.limit ?? 10 } : undefined,
-          },
-      // TODO: Add orderBy
+        businesses: options?.include?.businesses ? (typeof options.include.businesses === 'boolean' ? true : { limit: options.include.businesses.limit ?? 10 /* offset not supported here */ }) : undefined,
+        // connectedChannels, products, orders were placeholders.
+      },
+      orderBy: [desc(users.createdAt)] // Default order
     });
 
-    const totalQuery = db.select({ value: count() }).from(users).where(and(...conditions));
+    const totalQuery = db.select({ value: count() }).from(users).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([usersQuery, totalQuery]);
     
@@ -78,6 +85,11 @@ export class UsersService {
     return updatedUser || null;
   }
 
+  // TODO: updateManyUsers method needs to be re-evaluated.
+  // UpdateManyUsersData was removed from users.types.ts.
+  // If bulk updates are needed, define the data structure and implement accordingly.
+  // For now, commenting out to avoid type errors.
+  /*
   async updateManyUsers(filter: UserFilterOptions, data: UpdateManyUsersData): Promise<{ count: number }> {
     if (!filter.ids || filter.ids.length === 0) {
         // Or handle other filters if ids is not the primary way to updateMany
@@ -86,19 +98,14 @@ export class UsersService {
     // This is a simplified updateMany. Drizzle doesn't have a direct .updateMany().returningRowCount()
     // You might need to select then update, or use a raw query for more complex scenarios.
     // For now, we'll update based on IDs and assume the operation affects rows if IDs are matched.
-    await db // Removed unused 'result' variable
+    const result = await db
       .update(users)
-      .set({ ...data, updatedAt: new Date() })
-      .where(inArray(users.userId, filter.ids as string[])); // Ensure filter.ids is string[]
+      .set({ ...data, updatedAt: new Date() }) // data would be UpdateManyUsersData
+      .where(inArray(users.userId, filter.ids as string[])); 
       
-    // Drizzle's update doesn't directly return affected rows count for all drivers in a simple way.
-    // This count might be an estimate or require a subsequent select count based on the filter.
-    // For PostgreSQL, `result.rowCount` would be available if using `pg` driver directly.
-    // Let's assume for now we can get a count or it's implicitly handled.
-    // A more robust way would be to select IDs that match the filter, then update by those IDs,
-    // and the count would be the number of IDs found.
-    return { count: filter.ids.length }; // Placeholder count
+    return { count: result.rowCount ?? 0 }; // Placeholder count, actual rowCount depends on driver and Drizzle version
   }
+  */
 
   async deleteUser(userId: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.userId, userId));
