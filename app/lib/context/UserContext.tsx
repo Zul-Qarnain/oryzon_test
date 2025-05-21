@@ -36,11 +36,11 @@ export interface UserContextType {
   deleteUser: (userId: string) => Promise<ApiResponse<null>>; // Null for successful deletion with 204
   cleanError_User: () => void;
   loginWithEmail: (email: string, password: string) => Promise<FirebaseUser | null>;
-  signUpWithEmail: (email: string, password: string, businessName: string) => Promise<FirebaseUser | null>;
+  signUpWithEmail: (email: string, password: string /* businessName: string */) => Promise<FirebaseUser | null>; // businessName removed
   loginWithGoogle: () => Promise<FirebaseUser | null>;
-  signUpWithGoogle: (businessName: string) => Promise<FirebaseUser | null>;
+  signUpWithGoogle: (/* businessName: string */) => Promise<FirebaseUser | null>; // businessName removed
   loginWithFacebook: () => Promise<FirebaseUser | null>;
-  signUpWithFacebook: (businessName: string) => Promise<FirebaseUser | null>;
+  signUpWithFacebook: (/* businessName: string */) => Promise<FirebaseUser | null>; // businessName removed
   logoutUser: () => Promise<void>;
   FUser: FirebaseUser | null;
 }
@@ -194,8 +194,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const syncUserWithBackend = async (
     firebaseUser: FirebaseUser,
     operation: 'LOGIN' | 'SIGNUP',
-    provider: typeof loginProviderEnum.enumValues[number],
-    businessName?: string
+    provider: typeof loginProviderEnum.enumValues[number]
+    // businessName?: string // Removed from here, will be handled by calling code for separate business creation
   ): Promise<UserWithIncludes | null> => {
     setUserLoading(true);
     setErrorUser(null);
@@ -227,15 +227,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           providerUserId: firebaseUser.uid,
           loginProvider: provider,
           // businessName is no longer part of CreateUserData
-          // TODO: Use 'businessName' parameter to create a Business entity separately after user creation.
+          // TODO: The calling code (e.g., signUpWithEmail) is now responsible for ensuring 'businessName'
+          // was provided if required by the overall business logic for signup, and then using it
+          // to create a Business entity separately after successful user creation via this sync.
         };
-        // The check for businessName during email signup is now less about CreateUserData
-        // and more about the overall signup flow requiring a business.
-        if (provider === 'EMAIL' && !businessName) {
-          // This error might be better handled before calling syncUserWithBackend,
-          // or this function could return a specific status indicating business creation is pending.
-          throw new Error("Business name is required for the signup process, though not directly for user creation.");
-        }
+        // The direct check for businessName within this function is removed as it's no longer a parameter.
+        // The calling function (e.g., signUpWithEmail) should manage this requirement.
         
         const createResp = await request<UserWithIncludes>("POST", "/api/users", userData);
 
@@ -277,12 +274,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string, businessName: string): Promise<FirebaseUser | null> => {
+  const signUpWithEmail = async (email: string, password: string /* businessName: string */): Promise<FirebaseUser | null> => {
+    // TODO: The calling component will now need to handle businessName separately
+    // after this function successfully creates the user.
     setUserLoading(true);
     setErrorUser(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await syncUserWithBackend(userCredential.user, 'SIGNUP', 'EMAIL', businessName);
+      // Pass businessName to syncUserWithBackend if it were still accepted for user creation context,
+      // but it's removed. The calling code must handle business creation.
+      await syncUserWithBackend(userCredential.user, 'SIGNUP', 'EMAIL');
       return userCredential.user;
     } catch (err) {
       setErrorUser(err instanceof Error ? err.message : String(err));
@@ -292,12 +293,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const handleOAuthSignIn = async (providerInstance: GoogleAuthProvider | FacebookAuthProvider, providerName: typeof loginProviderEnum.enumValues[number], operation: 'LOGIN' | 'SIGNUP', businessName?: string): Promise<FirebaseUser | null> => {
+  const handleOAuthSignIn = async (providerInstance: GoogleAuthProvider | FacebookAuthProvider, providerName: typeof loginProviderEnum.enumValues[number], operation: 'LOGIN' | 'SIGNUP' /* businessName?: string */): Promise<FirebaseUser | null> => {
+    // TODO: The calling component will now need to handle businessName separately for SIGNUP
+    // after this function successfully creates/logs in the user.
     setUserLoading(true);
     setErrorUser(null);
     try {
       const result: UserCredential = await signInWithPopup(auth, providerInstance);
-      await syncUserWithBackend(result.user, operation, providerName, businessName);
+      await syncUserWithBackend(result.user, operation, providerName /*, businessName */);
       return result.user;
     } catch (err) {
       setErrorUser(err instanceof Error ? err.message : String(err));
@@ -308,9 +311,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginWithGoogle = () => handleOAuthSignIn(new GoogleAuthProvider(), 'GOOGLE', 'LOGIN');
-  const signUpWithGoogle = (businessName: string) => handleOAuthSignIn(new GoogleAuthProvider(), 'GOOGLE', 'SIGNUP', businessName);
+  const signUpWithGoogle = (/* businessName: string */) => handleOAuthSignIn(new GoogleAuthProvider(), 'GOOGLE', 'SIGNUP' /*, businessName */);
   const loginWithFacebook = () => handleOAuthSignIn(new FacebookAuthProvider(), 'FACEBOOK', 'LOGIN');
-  const signUpWithFacebook = (businessName: string) => handleOAuthSignIn(new FacebookAuthProvider(), 'FACEBOOK', 'SIGNUP', businessName);
+  const signUpWithFacebook = (/* businessName: string */) => handleOAuthSignIn(new FacebookAuthProvider(), 'FACEBOOK', 'SIGNUP' /*, businessName */);
 
   const logoutUser = async () => {
     setUserLoading(true);
