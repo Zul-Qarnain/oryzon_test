@@ -1,6 +1,8 @@
+"use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Order, OrderWithIncludes } from "@/backend/services/orders/orders.types";
 import type { OrderFilterOptions as OrderFilter } from "@/backend/services/orders/orders.types";
+import { useFetchContext, ApiResponse } from "./FetchContext";
 
 export interface PaginationOptions {
   limit?: number;
@@ -13,146 +15,115 @@ export interface OrderContextType {
   total_order: number;
   order_loading: boolean;
   error_order: string | null;
-  fetchOrder: (orderId: string, options?: { include?: string }) => Promise<void>;
-  fetchOrders: (options?: { filter?: OrderFilter; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createOrder: (data: Partial<Order>) => Promise<OrderWithIncludes | null>;
-  updateOrder: (orderId: string, data: Partial<Order>) => Promise<OrderWithIncludes | null>;
-  deleteOrder: (orderId: string) => Promise<boolean>;
+  fetchOrder: (orderId: string, options?: { include?: string }) => Promise<ApiResponse<OrderWithIncludes>>;
+  fetchOrders: (options?: { filter?: OrderFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: OrderWithIncludes[]; total: number }>>;
+  createOrder: (data: Partial<Order>) => Promise<ApiResponse<OrderWithIncludes>>;
+  updateOrder: (orderId: string, data: Partial<Order>) => Promise<ApiResponse<OrderWithIncludes>>;
+  deleteOrder: (orderId: string) => Promise<ApiResponse<null>>;
   cleanError_Order: () => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export const OrderProvider = ({ children }: { children: ReactNode }) => {
+  const { request } = useFetchContext();
   const [order, setOrder] = useState<OrderWithIncludes | null>(null);
   const [orders, setOrders] = useState<OrderWithIncludes[]>([]);
   const [total_order, setTotalOrder] = useState(0);
   const [order_loading, setOrderLoading] = useState(false);
   const [error_order, setErrorOrder] = useState<string | null>(null);
 
-  const fetchOrder = useCallback(async (orderId: string, options?: { include?: string }) => {
+  const fetchOrder = useCallback(async (orderId: string, options?: { include?: string }): Promise<ApiResponse<OrderWithIncludes>> => {
     setOrderLoading(true);
     setErrorOrder(null);
-    try {
-      const url = `/api/orders/${orderId}` + (options?.include ? `?include=${options.include}` : "");
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch order");
-      }
-      const data: OrderWithIncludes = await res.json();
-      setOrder(data);
-    } catch (err) {
-      setErrorOrder(err instanceof Error ? err.message : String(err));
+    const url = `/api/orders/${orderId}` + (options?.include ? `?include=${options.include}` : "");
+    const response = await request<OrderWithIncludes>("GET", url);
+
+    if (response.error) {
+      setErrorOrder(response.error);
       setOrder(null);
-    } finally {
-      setOrderLoading(false);
+    } else {
+      setOrder(response.result);
     }
-  }, []);
+    setOrderLoading(false);
+    return response;
+  }, [request]);
 
   const fetchOrders = useCallback(
-    async (options?: { filter?: OrderFilter; pagination?: PaginationOptions; include?: string }) => {
+    async (options?: { filter?: OrderFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: OrderWithIncludes[]; total: number }>> => {
       setOrderLoading(true);
       setErrorOrder(null);
-      try {
-        const params = new URLSearchParams();
-        if (options?.filter) {
-          Object.entries(options.filter).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) params.append(key, String(value));
-          });
-        }
-        if (options?.pagination) {
-          if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
-          if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
-        }
-        if (options?.include) params.append("include", options.include);
+      const params = new URLSearchParams();
+      if (options?.filter) {
+        Object.entries(options.filter).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) params.append(key, String(value));
+        });
+      }
+      if (options?.pagination) {
+        if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
+        if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
+      }
+      if (options?.include) params.append("include", options.include);
 
-        const url = `/api/orders${params.toString() ? `?${params.toString()}` : ""}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch orders");
-        }
-        const data: { data: OrderWithIncludes[]; total: number } = await res.json();
-        setOrders(data.data || []);
-        setTotalOrder(data.total || 0);
-      } catch (err) {
-        setErrorOrder(err instanceof Error ? err.message : String(err));
+      const url = `/api/orders${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await request<{ data: OrderWithIncludes[]; total: number }>("GET", url);
+
+      if (response.error) {
+        setErrorOrder(response.error);
         setOrders([]);
         setTotalOrder(0);
-      } finally {
-        setOrderLoading(false);
+      } else if (response.result) {
+        setOrders(response.result.data || []);
+        setTotalOrder(response.result.total || 0);
       }
+      setOrderLoading(false);
+      return response;
     },
-    []
+    [request]
   );
 
-  const createOrder = useCallback(async (data: Partial<Order>) => {
+  const createOrder = useCallback(async (data: Partial<Order>): Promise<ApiResponse<OrderWithIncludes>> => {
     setOrderLoading(true);
     setErrorOrder(null);
-    try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create order");
-      }
-      const order: OrderWithIncludes = await res.json();
-      setOrder(order);
-      return order;
-    } catch (err) {
-      setErrorOrder(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setOrderLoading(false);
-    }
-  }, []);
+    const response = await request<OrderWithIncludes>("POST", "/api/orders", data);
 
-  const updateOrder = useCallback(async (orderId: string, data: Partial<Order>) => {
-    setOrderLoading(true);
-    setErrorOrder(null);
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to update order");
-      }
-      const updated: OrderWithIncludes = await res.json();
-      setOrder(updated);
-      return updated;
-    } catch (err) {
-      setErrorOrder(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setOrderLoading(false);
+    if (response.error) {
+      setErrorOrder(response.error);
+    } else {
+      setOrder(response.result); // Optionally update current order or refetch list
     }
-  }, []);
+    setOrderLoading(false);
+    return response;
+  }, [request]);
 
-  const deleteOrder = useCallback(async (orderId: string) => {
+  const updateOrder = useCallback(async (orderId: string, data: Partial<Order>): Promise<ApiResponse<OrderWithIncludes>> => {
     setOrderLoading(true);
     setErrorOrder(null);
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to delete order");
-      }
-      setOrder(null);
-      return true;
-    } catch (err) {
-      setErrorOrder(err instanceof Error ? err.message : String(err));
-      return false;
-    } finally {
-      setOrderLoading(false);
+    const response = await request<OrderWithIncludes>("PUT", `/api/orders/${orderId}`, data);
+
+    if (response.error) {
+      setErrorOrder(response.error);
+    } else {
+      setOrder(response.result); // Optionally update current order or refetch list
     }
-  }, []);
+    setOrderLoading(false);
+    return response;
+  }, [request]);
+
+  const deleteOrder = useCallback(async (orderId: string): Promise<ApiResponse<null>> => {
+    setOrderLoading(true);
+    setErrorOrder(null);
+    const response = await request<null>("DELETE", `/api/orders/${orderId}`);
+
+    if (response.error) {
+      setErrorOrder(response.error);
+    } else {
+      setOrder(null); // Clear current order if it was deleted
+      // Optionally refetch orders list
+    }
+    setOrderLoading(false);
+    return response;
+  }, [request]);
 
   const cleanError_Order = useCallback(() => setErrorOrder(null), []);
 

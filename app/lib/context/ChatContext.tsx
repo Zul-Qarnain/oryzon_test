@@ -1,6 +1,7 @@
+"use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Chat, ChatWithIncludes, ChatFilterOptions } from "@/backend/services/chats/chats.types";
-// import type { ChatFilterOptions as ChatFilter } from "@/backend/services/chats/chats.types"; // userId removed, using ChatFilterOptions directly
+import { useFetchContext, ApiResponse } from "./FetchContext";
 
 export interface PaginationOptions {
   limit?: number;
@@ -13,146 +14,115 @@ export interface ChatContextType {
   total_chat: number;
   chat_loading: boolean;
   error_chat: string | null;
-  fetchChat: (chatId: string, options?: { include?: string }) => Promise<void>;
-  fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createChat: (data: Partial<Omit<Chat, 'userId'>>) => Promise<ChatWithIncludes | null>;
-  updateChat: (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => Promise<ChatWithIncludes | null>;
-  deleteChat: (chatId: string) => Promise<boolean>;
+  fetchChat: (chatId: string, options?: { include?: string }) => Promise<ApiResponse<ChatWithIncludes>>;
+  fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>>;
+  createChat: (data: Partial<Omit<Chat, 'userId'>>) => Promise<ApiResponse<ChatWithIncludes>>;
+  updateChat: (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => Promise<ApiResponse<ChatWithIncludes>>;
+  deleteChat: (chatId: string) => Promise<ApiResponse<null>>;
   cleanError_Chat: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
+  const { request } = useFetchContext();
   const [chat, setChat] = useState<ChatWithIncludes | null>(null);
   const [chats, setChats] = useState<ChatWithIncludes[]>([]);
   const [total_chat, setTotalChat] = useState(0);
   const [chat_loading, setChatLoading] = useState(false);
   const [error_chat, setErrorChat] = useState<string | null>(null);
 
-  const fetchChat = useCallback(async (chatId: string, options?: { include?: string }) => {
+  const fetchChat = useCallback(async (chatId: string, options?: { include?: string }): Promise<ApiResponse<ChatWithIncludes>> => {
     setChatLoading(true);
     setErrorChat(null);
-    try {
-      const url = `/api/chats/${chatId}` + (options?.include ? `?include=${options.include}` : "");
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch chat");
-      }
-      const data: ChatWithIncludes = await res.json();
-      setChat(data);
-    } catch (err) {
-      setErrorChat(err instanceof Error ? err.message : String(err));
+    const url = `/api/chats/${chatId}` + (options?.include ? `?include=${options.include}` : "");
+    const response = await request<ChatWithIncludes>("GET", url);
+    
+    if (response.error) {
+      setErrorChat(response.error);
       setChat(null);
-    } finally {
-      setChatLoading(false);
+    } else {
+      setChat(response.result);
     }
-  }, []);
+    setChatLoading(false);
+    return response;
+  }, [request]);
 
   const fetchChats = useCallback(
-    async (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => {
+    async (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>> => {
       setChatLoading(true);
       setErrorChat(null);
-      try {
-        const params = new URLSearchParams();
-        if (options?.filter) {
-          Object.entries(options.filter).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) params.append(key, String(value));
-          });
-        }
-        if (options?.pagination) {
-          if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
-          if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
-        }
-        if (options?.include) params.append("include", options.include);
+      const params = new URLSearchParams();
+      if (options?.filter) {
+        Object.entries(options.filter).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) params.append(key, String(value));
+        });
+      }
+      if (options?.pagination) {
+        if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
+        if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
+      }
+      if (options?.include) params.append("include", options.include);
 
-        const url = `/api/chats${params.toString() ? `?${params.toString()}` : ""}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch chats");
-        }
-        const data: { data: ChatWithIncludes[]; total: number } = await res.json();
-        setChats(data.data || []);
-        setTotalChat(data.total || 0);
-      } catch (err) {
-        setErrorChat(err instanceof Error ? err.message : String(err));
+      const url = `/api/chats${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await request<{ data: ChatWithIncludes[]; total: number }>("GET", url);
+
+      if (response.error) {
+        setErrorChat(response.error);
         setChats([]);
         setTotalChat(0);
-      } finally {
-        setChatLoading(false);
+      } else if(response.result) {
+        setChats(response.result.data || []);
+        setTotalChat(response.result.total || 0);
       }
+      setChatLoading(false);
+      return response;
     },
-    []
+    [request]
   );
 
-  const createChat = useCallback(async (data: Partial<Omit<Chat, 'userId'>>) => {
+  const createChat = useCallback(async (data: Partial<Omit<Chat, 'userId'>>): Promise<ApiResponse<ChatWithIncludes>> => {
     setChatLoading(true);
     setErrorChat(null);
-    try {
-      const res = await fetch("/api/chats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create chat");
-      }
-      const chat: ChatWithIncludes = await res.json();
-      setChat(chat);
-      return chat;
-    } catch (err) {
-      setErrorChat(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setChatLoading(false);
-    }
-  }, []);
+    const response = await request<ChatWithIncludes>("POST", "/api/chats", data);
 
-  const updateChat = useCallback(async (chatId: string, data: Partial<Omit<Chat, 'userId'>>) => {
-    setChatLoading(true);
-    setErrorChat(null);
-    try {
-      const res = await fetch(`/api/chats/${chatId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to update chat");
-      }
-      const updated: ChatWithIncludes = await res.json();
-      setChat(updated);
-      return updated;
-    } catch (err) {
-      setErrorChat(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setChatLoading(false);
+    if (response.error) {
+      setErrorChat(response.error);
+    } else {
+      setChat(response.result); // Optionally update current chat or refetch list
     }
-  }, []);
+    setChatLoading(false);
+    return response;
+  }, [request]);
 
-  const deleteChat = useCallback(async (chatId: string) => {
+  const updateChat = useCallback(async (chatId: string, data: Partial<Omit<Chat, 'userId'>>): Promise<ApiResponse<ChatWithIncludes>> => {
     setChatLoading(true);
     setErrorChat(null);
-    try {
-      const res = await fetch(`/api/chats/${chatId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to delete chat");
-      }
-      setChat(null);
-      return true;
-    } catch (err) {
-      setErrorChat(err instanceof Error ? err.message : String(err));
-      return false;
-    } finally {
-      setChatLoading(false);
+    const response = await request<ChatWithIncludes>("PUT", `/api/chats/${chatId}`, data);
+
+    if (response.error) {
+      setErrorChat(response.error);
+    } else {
+      setChat(response.result); // Optionally update current chat or refetch list
     }
-  }, []);
+    setChatLoading(false);
+    return response;
+  }, [request]);
+
+  const deleteChat = useCallback(async (chatId: string): Promise<ApiResponse<null>> => {
+    setChatLoading(true);
+    setErrorChat(null);
+    const response = await request<null>("DELETE", `/api/chats/${chatId}`);
+
+    if (response.error) {
+      setErrorChat(response.error);
+    } else {
+      setChat(null); // Clear current chat if it was deleted
+      // Optionally refetch chats list
+    }
+    setChatLoading(false);
+    return response;
+  }, [request]);
 
   const cleanError_Chat = useCallback(() => setErrorChat(null), []);
 

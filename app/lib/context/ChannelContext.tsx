@@ -1,6 +1,8 @@
+"use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { ConnectedChannel, ConnectedChannelWithIncludes } from "@/backend/services/channels/channels.types";
 import type { ChannelFilterOptions as ChannelFilter } from "@/backend/services/channels/channels.types";
+import { useFetchContext, ApiResponse } from "./FetchContext";
 
 export interface PaginationOptions {
   limit?: number;
@@ -13,146 +15,115 @@ export interface ChannelContextType {
   total_channel: number;
   channel_loading: boolean;
   error_channel: string | null;
-  fetchChannel: (channelId: string, options?: { include?: string }) => Promise<void>;
-  fetchChannels: (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createChannel: (data: Partial<ConnectedChannel>) => Promise<ConnectedChannelWithIncludes | null>;
-  updateChannel: (channelId: string, data: Partial<ConnectedChannel>) => Promise<ConnectedChannelWithIncludes | null>;
-  deleteChannel: (channelId: string) => Promise<boolean>;
+  fetchChannel: (channelId: string, options?: { include?: string }) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
+  fetchChannels: (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ConnectedChannelWithIncludes[]; total: number }>>;
+  createChannel: (data: Partial<ConnectedChannel>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
+  updateChannel: (channelId: string, data: Partial<ConnectedChannel>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
+  deleteChannel: (channelId: string) => Promise<ApiResponse<null>>;
   cleanError_Channel: () => void;
 }
 
 const ChannelContext = createContext<ChannelContextType | undefined>(undefined);
 
 export const ChannelProvider = ({ children }: { children: ReactNode }) => {
+  const { request } = useFetchContext();
   const [channel, setChannel] = useState<ConnectedChannelWithIncludes | null>(null);
   const [channels, setChannels] = useState<ConnectedChannelWithIncludes[]>([]);
   const [total_channel, setTotalChannel] = useState(0);
   const [channel_loading, setChannelLoading] = useState(false);
   const [error_channel, setErrorChannel] = useState<string | null>(null);
 
-  const fetchChannel = useCallback(async (channelId: string, options?: { include?: string }) => {
+  const fetchChannel = useCallback(async (channelId: string, options?: { include?: string }): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
     setChannelLoading(true);
     setErrorChannel(null);
-    try {
-      const url = `/api/channels/${channelId}` + (options?.include ? `?include=${options.include}` : "");
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch channel");
-      }
-      const data: ConnectedChannelWithIncludes = await res.json();
-      setChannel(data);
-    } catch (err) {
-      setErrorChannel(err instanceof Error ? err.message : String(err));
+    const url = `/api/channels/${channelId}` + (options?.include ? `?include=${options.include}` : "");
+    const response = await request<ConnectedChannelWithIncludes>("GET", url);
+
+    if (response.error) {
+      setErrorChannel(response.error);
       setChannel(null);
-    } finally {
-      setChannelLoading(false);
+    } else {
+      setChannel(response.result);
     }
-  }, []);
+    setChannelLoading(false);
+    return response;
+  }, [request]);
 
   const fetchChannels = useCallback(
-    async (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }) => {
+    async (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: ConnectedChannelWithIncludes[]; total: number }>> => {
       setChannelLoading(true);
       setErrorChannel(null);
-      try {
-        const params = new URLSearchParams();
-        if (options?.filter) {
-          Object.entries(options.filter).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) params.append(key, String(value));
-          });
-        }
-        if (options?.pagination) {
-          if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
-          if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
-        }
-        if (options?.include) params.append("include", options.include);
+      const params = new URLSearchParams();
+      if (options?.filter) {
+        Object.entries(options.filter).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) params.append(key, String(value));
+        });
+      }
+      if (options?.pagination) {
+        if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
+        if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
+      }
+      if (options?.include) params.append("include", options.include);
 
-        const url = `/api/channels${params.toString() ? `?${params.toString()}` : ""}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch channels");
-        }
-        const data: { data: ConnectedChannelWithIncludes[]; total: number } = await res.json();
-        setChannels(data.data || []);
-        setTotalChannel(data.total || 0);
-      } catch (err) {
-        setErrorChannel(err instanceof Error ? err.message : String(err));
+      const url = `/api/channels${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await request<{ data: ConnectedChannelWithIncludes[]; total: number }>("GET", url);
+
+      if (response.error) {
+        setErrorChannel(response.error);
         setChannels([]);
         setTotalChannel(0);
-      } finally {
-        setChannelLoading(false);
+      } else if (response.result) {
+        setChannels(response.result.data || []);
+        setTotalChannel(response.result.total || 0);
       }
+      setChannelLoading(false);
+      return response;
     },
-    []
+    [request]
   );
 
-  const createChannel = useCallback(async (data: Partial<ConnectedChannel>) => {
+  const createChannel = useCallback(async (data: Partial<ConnectedChannel>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
     setChannelLoading(true);
     setErrorChannel(null);
-    try {
-      const res = await fetch("/api/channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create channel");
-      }
-      const channel: ConnectedChannelWithIncludes = await res.json();
-      setChannel(channel);
-      return channel;
-    } catch (err) {
-      setErrorChannel(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setChannelLoading(false);
-    }
-  }, []);
+    const response = await request<ConnectedChannelWithIncludes>("POST", "/api/channels", data);
 
-  const updateChannel = useCallback(async (channelId: string, data: Partial<ConnectedChannel>) => {
-    setChannelLoading(true);
-    setErrorChannel(null);
-    try {
-      const res = await fetch(`/api/channels/${channelId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to update channel");
-      }
-      const updated: ConnectedChannelWithIncludes = await res.json();
-      setChannel(updated);
-      return updated;
-    } catch (err) {
-      setErrorChannel(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setChannelLoading(false);
+    if (response.error) {
+      setErrorChannel(response.error);
+    } else {
+      setChannel(response.result); // Optionally update current channel or refetch list
     }
-  }, []);
+    setChannelLoading(false);
+    return response;
+  }, [request]);
 
-  const deleteChannel = useCallback(async (channelId: string) => {
+  const updateChannel = useCallback(async (channelId: string, data: Partial<ConnectedChannel>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
     setChannelLoading(true);
     setErrorChannel(null);
-    try {
-      const res = await fetch(`/api/channels/${channelId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to delete channel");
-      }
-      setChannel(null);
-      return true;
-    } catch (err) {
-      setErrorChannel(err instanceof Error ? err.message : String(err));
-      return false;
-    } finally {
-      setChannelLoading(false);
+    const response = await request<ConnectedChannelWithIncludes>("PUT", `/api/channels/${channelId}`, data);
+
+    if (response.error) {
+      setErrorChannel(response.error);
+    } else {
+      setChannel(response.result); // Optionally update current channel or refetch list
     }
-  }, []);
+    setChannelLoading(false);
+    return response;
+  }, [request]);
+
+  const deleteChannel = useCallback(async (channelId: string): Promise<ApiResponse<null>> => {
+    setChannelLoading(true);
+    setErrorChannel(null);
+    const response = await request<null>("DELETE", `/api/channels/${channelId}`);
+
+    if (response.error) {
+      setErrorChannel(response.error);
+    } else {
+      setChannel(null); // Clear current channel if it was deleted
+      // Optionally refetch channels list
+    }
+    setChannelLoading(false);
+    return response;
+  }, [request]);
 
   const cleanError_Channel = useCallback(() => setErrorChannel(null), []);
 

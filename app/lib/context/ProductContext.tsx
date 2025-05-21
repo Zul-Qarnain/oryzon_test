@@ -1,6 +1,8 @@
+"use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Product, ProductWithIncludes } from "@/backend/services/products/products.types";
 import type { ProductFilterOptions as ProductFilter } from "@/backend/services/products/products.types";
+import { useFetchContext, ApiResponse } from "./FetchContext"; // Import useFetchContext and ApiResponse
 
 export interface PaginationOptions {
   limit?: number;
@@ -13,146 +15,115 @@ export interface ProductContextType {
   total_product: number;
   product_loading: boolean;
   error_product: string | null;
-  fetchProduct: (productId: string, options?: { include?: string }) => Promise<void>;
-  fetchProducts: (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createProduct: (data: Partial<Product>) => Promise<ProductWithIncludes | null>;
-  updateProduct: (productId: string, data: Partial<Product>) => Promise<ProductWithIncludes | null>;
-  deleteProduct: (productId: string) => Promise<boolean>;
+  fetchProduct: (productId: string, options?: { include?: string }) => Promise<ApiResponse<ProductWithIncludes>>;
+  fetchProducts: (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ProductWithIncludes[]; total: number }>>;
+  createProduct: (data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
+  updateProduct: (productId: string, data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
+  deleteProduct: (productId: string) => Promise<ApiResponse<null>>;
   cleanError_Product: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
+  const { request } = useFetchContext(); // Get request from FetchContext
   const [product, setProduct] = useState<ProductWithIncludes | null>(null);
   const [products, setProducts] = useState<ProductWithIncludes[]>([]);
   const [total_product, setTotalProduct] = useState(0);
   const [product_loading, setProductLoading] = useState(false);
   const [error_product, setErrorProduct] = useState<string | null>(null);
 
-  const fetchProduct = useCallback(async (productId: string, options?: { include?: string }) => {
+  const fetchProduct = useCallback(async (productId: string, options?: { include?: string }): Promise<ApiResponse<ProductWithIncludes>> => {
     setProductLoading(true);
     setErrorProduct(null);
-    try {
-      const url = `/api/products/${productId}` + (options?.include ? `?include=${options.include}` : "");
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch product");
-      }
-      const data: ProductWithIncludes = await res.json();
-      setProduct(data);
-    } catch (err) {
-      setErrorProduct(err instanceof Error ? err.message : String(err));
+    const url = `/api/products/${productId}` + (options?.include ? `?include=${options.include}` : "");
+    const response = await request<ProductWithIncludes>("GET", url);
+    
+    if (response.error) {
+      setErrorProduct(response.error);
       setProduct(null);
-    } finally {
-      setProductLoading(false);
+    } else {
+      setProduct(response.result);
     }
-  }, []);
+    setProductLoading(false);
+    return response;
+  }, [request]);
 
   const fetchProducts = useCallback(
-    async (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }) => {
+    async (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: ProductWithIncludes[]; total: number }>> => {
       setProductLoading(true);
       setErrorProduct(null);
-      try {
-        const params = new URLSearchParams();
-        if (options?.filter) {
-          Object.entries(options.filter).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) params.append(key, String(value));
-          });
-        }
-        if (options?.pagination) {
-          if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
-          if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
-        }
-        if (options?.include) params.append("include", options.include);
+      const params = new URLSearchParams();
+      if (options?.filter) {
+        Object.entries(options.filter).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) params.append(key, String(value));
+        });
+      }
+      if (options?.pagination) {
+        if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
+        if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
+      }
+      if (options?.include) params.append("include", options.include);
 
-        const url = `/api/products${params.toString() ? `?${params.toString()}` : ""}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch products");
-        }
-        const data: { data: ProductWithIncludes[]; total: number } = await res.json();
-        setProducts(data.data || []);
-        setTotalProduct(data.total || 0);
-      } catch (err) {
-        setErrorProduct(err instanceof Error ? err.message : String(err));
+      const url = `/api/products${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await request<{ data: ProductWithIncludes[]; total: number }>("GET", url);
+
+      if (response.error) {
+        setErrorProduct(response.error);
         setProducts([]);
         setTotalProduct(0);
-      } finally {
-        setProductLoading(false);
+      } else if (response.result) {
+        setProducts(response.result.data || []);
+        setTotalProduct(response.result.total || 0);
       }
+      setProductLoading(false);
+      return response;
     },
-    []
+    [request]
   );
 
-  const createProduct = useCallback(async (data: Partial<Product>) => {
+  const createProduct = useCallback(async (data: Partial<Product>): Promise<ApiResponse<ProductWithIncludes>> => {
     setProductLoading(true);
     setErrorProduct(null);
-    try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create product");
-      }
-      const product: ProductWithIncludes = await res.json();
-      setProduct(product);
-      return product;
-    } catch (err) {
-      setErrorProduct(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setProductLoading(false);
-    }
-  }, []);
+    const response = await request<ProductWithIncludes>("POST", "/api/products", data);
 
-  const updateProduct = useCallback(async (productId: string, data: Partial<Product>) => {
-    setProductLoading(true);
-    setErrorProduct(null);
-    try {
-      const res = await fetch(`/api/products/${productId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to update product");
-      }
-      const updated: ProductWithIncludes = await res.json();
-      setProduct(updated);
-      return updated;
-    } catch (err) {
-      setErrorProduct(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setProductLoading(false);
+    if (response.error) {
+      setErrorProduct(response.error);
+    } else {
+      setProduct(response.result); // Optionally update current product or refetch list
     }
-  }, []);
+    setProductLoading(false);
+    return response;
+  }, [request]);
 
-  const deleteProduct = useCallback(async (productId: string) => {
+  const updateProduct = useCallback(async (productId: string, data: Partial<Product>): Promise<ApiResponse<ProductWithIncludes>> => {
     setProductLoading(true);
     setErrorProduct(null);
-    try {
-      const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to delete product");
-      }
-      setProduct(null);
-      return true;
-    } catch (err) {
-      setErrorProduct(err instanceof Error ? err.message : String(err));
-      return false;
-    } finally {
-      setProductLoading(false);
+    const response = await request<ProductWithIncludes>("PUT", `/api/products/${productId}`, data);
+
+    if (response.error) {
+      setErrorProduct(response.error);
+    } else {
+      setProduct(response.result); // Optionally update current product or refetch list
     }
-  }, []);
+    setProductLoading(false);
+    return response;
+  }, [request]);
+
+  const deleteProduct = useCallback(async (productId: string): Promise<ApiResponse<null>> => {
+    setProductLoading(true);
+    setErrorProduct(null);
+    const response = await request<null>("DELETE", `/api/products/${productId}`);
+
+    if (response.error) {
+      setErrorProduct(response.error);
+    } else {
+      setProduct(null); // Clear current product if it was deleted
+      // Optionally refetch products list
+    }
+    setProductLoading(false);
+    return response;
+  }, [request]);
 
   const cleanError_Product = useCallback(() => setErrorProduct(null), []);
 

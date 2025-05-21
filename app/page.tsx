@@ -1,6 +1,40 @@
+"use client";
 import Image from "next/image";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUserContext } from "@/app/lib/context/UserContext";
 
 export default function Home() {
+  const router = useRouter();
+  const { user, user_loading } = useUserContext();
+
+  useEffect(() => {
+    // If user data is not loading and there is no user, redirect to the new user page.
+    if (!user_loading && !user) {
+      router.push("/user/new");
+    }
+  }, [user, user_loading, router]); // Dependencies for the effect
+
+  // Display a loading message while user data is being fetched.
+  if (user_loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // If there's no user (and not loading), display a message or redirect.
+  // This state might be briefly visible before redirection or if redirection fails.
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Redirecting to login...</p>
+      </div>
+    );
+  }
+
+  // If the user is logged in, display their name and the rest of the page.
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -12,6 +46,9 @@ export default function Home() {
           height={38}
           priority
         />
+        {/* Display user's name. Fallback to email if name is not available. */}
+        <h1 className="text-2xl font-semibold">Welcome, {user.name || user.email}!</h1>
+        
         <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
           <li className="mb-2 tracking-[-.01em]">
             Get started by editing{" "}

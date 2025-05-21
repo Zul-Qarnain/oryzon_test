@@ -1,10 +1,11 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react"; // Added useEffect
-import { User as DbUser, UserWithIncludes, CreateUserData } from "@/backend/services/users/users.types"; // Renamed User to DbUser, added CreateUserData
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { User as DbUser, UserWithIncludes, CreateUserData } from "@/backend/services/users/users.types";
 import type { UserFilterOptions as UserFilter } from "@/backend/services/users/users.types";
-import { auth } from '@/app/lib/firebase'; // Firebase app instance
+import { auth } from '@/app/lib/firebase';
+import { useFetchContext, ApiResponse } from "./FetchContext"; // Import useFetchContext and ApiResponse
 import {
-  User as FirebaseUser, // Firebase Auth User
+  User as FirebaseUser,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
@@ -12,9 +13,10 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
-  UserCredential
+  UserCredential,
+  getIdToken
 } from 'firebase/auth';
-import { loginProviderEnum } from "@/db/schema"; // Import the enum
+import { loginProviderEnum } from "@/db/schema";
 
 export interface PaginationOptions {
   limit?: number;
@@ -27,13 +29,12 @@ export interface UserContextType {
   total_user: number;
   user_loading: boolean;
   error_user: string | null;
-  fetchUser: (userId: string, options?: { include?: string }) => Promise<void>;
-  fetchUsers: (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }) => Promise<void>;
-  createUser: (data: Partial<DbUser>) => Promise<UserWithIncludes | null>; // Changed User to DbUser
-  updateUser: (userId: string, data: Partial<DbUser>) => Promise<UserWithIncludes | null>; // Changed User to DbUser
-  deleteUser: (userId: string) => Promise<boolean>;
+  fetchUser: (userId: string, options?: { include?: string }) => Promise<ApiResponse<UserWithIncludes>>;
+  fetchUsers: (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: UserWithIncludes[]; total: number }>>;
+  createUser: (data: Partial<DbUser>) => Promise<ApiResponse<UserWithIncludes>>;
+  updateUser: (userId: string, data: Partial<DbUser>) => Promise<ApiResponse<UserWithIncludes>>;
+  deleteUser: (userId: string) => Promise<ApiResponse<null>>; // Null for successful deletion with 204
   cleanError_User: () => void;
-  // Firebase Auth methods
   loginWithEmail: (email: string, password: string) => Promise<FirebaseUser | null>;
   signUpWithEmail: (email: string, password: string, businessName: string) => Promise<FirebaseUser | null>;
   loginWithGoogle: () => Promise<FirebaseUser | null>;
@@ -41,172 +42,131 @@ export interface UserContextType {
   loginWithFacebook: () => Promise<FirebaseUser | null>;
   signUpWithFacebook: (businessName: string) => Promise<FirebaseUser | null>;
   logoutUser: () => Promise<void>;
-  currentFirebaseUser: FirebaseUser | null; // To store the current Firebase auth user
+  currentFirebaseUser: FirebaseUser | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<UserWithIncludes | null>(null); // This is our backend user
-  const [currentFirebaseUser, setCurrentFirebaseUser] = useState<FirebaseUser | null>(null); // Firebase auth user
+  const { request, setFirebaseToken } = useFetchContext(); // Get request and setFirebaseToken from FetchContext
+  const [user, setUser] = useState<UserWithIncludes | null>(null);
+  const [currentFirebaseUser, setCurrentFirebaseUser] = useState<FirebaseUser | null>(null);
   const [users, setUsers] = useState<UserWithIncludes[]>([]);
   const [total_user, setTotalUser] = useState(0);
-  const [user_loading, setUserLoading] = useState(false);
+  const [user_loading, setUserLoading] = useState(false); // This can be driven by FetchContext's loading if preferred
   const [error_user, setErrorUser] = useState<string | null>(null);
 
-  // Effect to listen for Firebase auth state changes
   useEffect(() => {
     setUserLoading(true);
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setCurrentFirebaseUser(fbUser);
       if (fbUser) {
-        // User is signed in to Firebase.
-        // Attempt to fetch/create user in our backend.
-        // This logic will be more fleshed out with syncUserWithBackend.
-        console.log("Firebase user detected:", fbUser.uid, fbUser.email);
-        // Example: try to fetch existing user by email or providerId
-        // await syncUserWithBackend(fbUser, 'LOGIN', fbUser.providerData[0]?.providerId || 'email');
+        try {
+          const token = await getIdToken(fbUser);
+          setFirebaseToken(token); // Set token in FetchContext
+          // Optionally, sync user with backend here or let components trigger it
+          console.log("Firebase user detected, token set:", fbUser.uid);
+          // Example: await syncUserWithBackend(fbUser, 'LOGIN', fbUser.providerData[0]?.providerId as any || 'EMAIL');
+        } catch (error) {
+          console.error("Error getting Firebase token:", error);
+          setFirebaseToken(null);
+          setUser(null);
+        }
       } else {
-        // User is signed out from Firebase.
-        setUser(null); // Clear our backend user state
+        setFirebaseToken(null); // Clear token in FetchContext
+        setUser(null);
       }
       setUserLoading(false);
     });
-    return () => unsubscribe(); // Cleanup subscription on unmount
-  }, []);
+    return () => unsubscribe();
+  }, [setFirebaseToken]);
 
-  // Fetch a single user by ID
-  const fetchUser = useCallback(async (userId: string, options?: { include?: string }) => {
+  const fetchUser = useCallback(async (userId: string, options?: { include?: string }): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
     setErrorUser(null);
-    try {
-      const url = `/api/users/${userId}` + (options?.include ? `?include=${options.include}` : "");
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch user");
-      }
-      const data: UserWithIncludes = await res.json();
-      setUser(data);
-    } catch (err) {
-      setErrorUser(err instanceof Error ? err.message : String(err));
+    const includeQuery = options?.include ? `?include=${options.include}` : "";
+    const response = await request<UserWithIncludes>("GET", `/api/users/${userId}${includeQuery}`);
+    if (response.error) {
+      setErrorUser(response.error);
       setUser(null);
-    } finally {
-      setUserLoading(false);
+    } else {
+      setUser(response.result);
     }
-  }, []);
+    setUserLoading(false);
+    return response;
+  }, [request]);
 
-  // Fetch users with optional filter, pagination, and includes
-  const fetchUsers = useCallback(
-    async (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }) => {
-      setUserLoading(true);
-      setErrorUser(null);
-      try {
-        const params = new URLSearchParams();
-        if (options?.filter) {
-          Object.entries(options.filter).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) params.append(key, String(value));
-          });
-        }
-        if (options?.pagination) {
-          if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
-          if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
-        }
-        if (options?.include) params.append("include", options.include);
-
-        const url = `/api/users${params.toString() ? `?${params.toString()}` : ""}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to fetch users");
-        }
-        const data: { data: UserWithIncludes[]; total: number } = await res.json();
-        setUsers(data.data || []);
-        setTotalUser(data.total || 0);
-      } catch (err) {
-        setErrorUser(err instanceof Error ? err.message : String(err));
-        setUsers([]);
-        setTotalUser(0);
-      } finally {
-        setUserLoading(false);
-      }
-    },
-    []
-  );
-
-  // Create a new user
-  const createUser = useCallback(async (data: Partial<DbUser>) => { // Changed User to DbUser
+  const fetchUsers = useCallback(async (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: UserWithIncludes[]; total: number }>> => {
     setUserLoading(true);
     setErrorUser(null);
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+    const params = new URLSearchParams();
+    if (options?.filter) {
+      Object.entries(options.filter).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) params.append(key, String(value));
       });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create user");
-      }
-      const user: UserWithIncludes = await res.json();
-      setUser(user);
-      return user;
-    } catch (err) {
-      setErrorUser(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setUserLoading(false);
     }
-  }, []);
+    if (options?.pagination) {
+      if (options.pagination.limit !== undefined) params.append("limit", String(options.pagination.limit));
+      if (options.pagination.offset !== undefined) params.append("offset", String(options.pagination.offset));
+    }
+    if (options?.include) params.append("include", options.include);
+    const url = `/api/users${params.toString() ? `?${params.toString()}` : ""}`;
+    
+    const response = await request<{ data: UserWithIncludes[]; total: number }>("GET", url);
 
-  // Update a user
-  const updateUser = useCallback(async (userId: string, data: Partial<DbUser>) => { // Changed User to DbUser
+    if (response.error) {
+      setErrorUser(response.error);
+      setUsers([]);
+      setTotalUser(0);
+    } else if (response.result) {
+      setUsers(response.result.data || []);
+      setTotalUser(response.result.total || 0);
+    }
+    setUserLoading(false);
+    return response;
+  }, [request]);
+
+  const createUser = useCallback(async (data: Partial<DbUser>): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
     setErrorUser(null);
-    try {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to update user");
-      }
-      const updated: UserWithIncludes = await res.json();
-      setUser(updated);
-      return updated;
-    } catch (err) {
-      setErrorUser(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      setUserLoading(false);
+    const response = await request<UserWithIncludes>("POST", "/api/users", data);
+    if (response.error) {
+      setErrorUser(response.error);
+    } else {
+      setUser(response.result); // Set the created user as the current user
     }
-  }, []);
+    setUserLoading(false);
+    return response;
+  }, [request]);
 
-  // Delete a user
-  const deleteUser = useCallback(async (userId: string) => {
+  const updateUser = useCallback(async (userId: string, data: Partial<DbUser>): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
     setErrorUser(null);
-    try {
-      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(typeof errData.message === "string" ? errData.message : "Failed to delete user");
-      }
-      setUser(null);
-      return true;
-    } catch (err) {
-      setErrorUser(err instanceof Error ? err.message : String(err));
-      return false;
-    } finally {
-      setUserLoading(false);
+    const response = await request<UserWithIncludes>("PUT", `/api/users/${userId}`, data);
+    if (response.error) {
+      setErrorUser(response.error);
+    } else {
+      setUser(response.result); // Update current user if it's the one being updated
     }
-  }, []);
+    setUserLoading(false);
+    return response;
+  }, [request]);
+
+  const deleteUser = useCallback(async (userId: string): Promise<ApiResponse<null>> => {
+    setUserLoading(true);
+    setErrorUser(null);
+    const response = await request<null>("DELETE", `/api/users/${userId}`);
+    if (response.error) {
+      setErrorUser(response.error);
+    } else {
+      setUser(null); // Clear user if the current user was deleted
+    }
+    setUserLoading(false);
+    return response;
+  }, [request]);
 
   const cleanError_User = useCallback(() => setErrorUser(null), []);
 
-  // Helper function to sync Firebase user with backend
   const syncUserWithBackend = async (
     firebaseUser: FirebaseUser,
     operation: 'LOGIN' | 'SIGNUP',
@@ -216,74 +176,57 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUserLoading(true);
     setErrorUser(null);
     try {
-      // Try to fetch user by providerUserId first (more reliable for OAuth)
-      // Or by email if it's an email/password login
-      let existingUser: UserWithIncludes | null = null;
-      const userApiUrl = `/api/users?filter[providerUserId]=${firebaseUser.uid}&filter[loginProvider]=${provider}`;
+      let filterParams = `filter[providerUserId]=${firebaseUser.uid}&filter[loginProvider]=${provider}`;
+      if (provider === 'EMAIL' && firebaseUser.email) {
+        filterParams = `filter[email]=${firebaseUser.email}&filter[loginProvider]=EMAIL`;
+      }
       
-      if (provider !== 'EMAIL') {
-        const findRes = await fetch(userApiUrl);
-        if (findRes.ok) {
-          const findData: { data: UserWithIncludes[]; total: number } = await findRes.json();
-          if (findData.total > 0 && findData.data[0]) {
-            existingUser = findData.data[0];
-          }
-        }
-      } else if (firebaseUser.email) {
-         const findByEmailUrl = `/api/users?filter[email]=${firebaseUser.email}&filter[loginProvider]=EMAIL`;
-         const findRes = await fetch(findByEmailUrl);
-         if (findRes.ok) {
-          const findData: { data: UserWithIncludes[]; total: number } = await findRes.json();
-          if (findData.total > 0 && findData.data[0]) {
-            existingUser = findData.data[0];
-          }
-        }
+      const findResp = await request<{ data: UserWithIncludes[]; total: number }>("GET", `/api/users?${filterParams}`);
+
+      let existingUser: UserWithIncludes | null = null;
+      if (findResp.result && findResp.result.total > 0 && findResp.result.data[0]) {
+        existingUser = findResp.result.data[0];
+      } else if (findResp.error && findResp.statusCode !== 404) { // Allow 404 for user not found
+         throw new Error(findResp.error || "Failed to check existing user");
       }
 
 
       if (existingUser) {
-        // User exists, update if necessary (e.g., last login, email verification status)
-        // For now, just set the user state
         setUser(existingUser);
-        setCurrentFirebaseUser(firebaseUser); // ensure currentFirebaseUser is also set
+        setCurrentFirebaseUser(firebaseUser);
         return existingUser;
       } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
-        // User does not exist, create them if it's a signup or a first-time OAuth login
         const userData: CreateUserData = {
           userId: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Default Name', // Use displayName if available
-          phone: firebaseUser.phoneNumber || undefined, // phoneNumber might be null for some providers initially
-          email: firebaseUser.email || undefined, // email might be null for some providers initially
+          name: firebaseUser.displayName || 'Default Name',
+          phone: firebaseUser.phoneNumber || undefined,
+          email: firebaseUser.email || undefined,
           providerUserId: firebaseUser.uid,
           loginProvider: provider,
-          businessName: businessName || firebaseUser.displayName || 'Default Business', // Use businessName if provided
+          businessName: businessName || firebaseUser.displayName || 'Default Business',
         };
         if (provider === 'EMAIL' && !businessName) {
           throw new Error("Business name is required for email sign up.");
         }
-        const createRes = await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userData),
-        });
-        if (!createRes.ok) {
-          const errData = await createRes.json().catch(() => ({}));
-          throw new Error(typeof errData.message === "string" ? errData.message : "Failed to create user in backend");
+        
+        const createResp = await request<UserWithIncludes>("POST", "/api/users", userData);
+
+        if (createResp.error || !createResp.result) {
+          throw new Error(createResp.error || "Failed to create user in backend");
         }
-        const newDbUser: UserWithIncludes = await createRes.json();
-        setUser(newDbUser);
+        setUser(createResp.result);
         setCurrentFirebaseUser(firebaseUser);
-        return newDbUser;
+        return createResp.result;
       } else if (operation === 'LOGIN' && provider === 'EMAIL' && !existingUser) {
-        // Email login attempt but user not found in our DB
         throw new Error("User not found with this email. Please sign up or try a different login method.");
       }
       return null;
     } catch (err) {
-      setErrorUser(err instanceof Error ? err.message : String(err));
-      // If backend sync fails, sign out from Firebase to maintain consistency
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorUser(message);
       await signOut(auth).catch(e => console.error("Firebase signout failed during error handling:", e));
       setCurrentFirebaseUser(null);
+      setFirebaseToken(null);
       setUser(null);
       return null;
     } finally {
@@ -291,8 +234,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-
-  // Firebase Auth Methods Implementation
   const loginWithEmail = async (email: string, password: string): Promise<FirebaseUser | null> => {
     setUserLoading(true);
     setErrorUser(null);
@@ -301,11 +242,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await syncUserWithBackend(userCredential.user, 'LOGIN', 'EMAIL');
       return userCredential.user;
     } catch (err) {
-      if (err instanceof Error) {
-        setErrorUser(err.message);
-      } else {
-        setErrorUser("Failed to login with email");
-      }
+      setErrorUser(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
       setUserLoading(false);
@@ -320,11 +257,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await syncUserWithBackend(userCredential.user, 'SIGNUP', 'EMAIL', businessName);
       return userCredential.user;
     } catch (err) {
-      if (err instanceof Error) {
-        setErrorUser(err.message);
-      } else {
-        setErrorUser("Failed to sign up with email");
-      }
+      setErrorUser(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
       setUserLoading(false);
@@ -339,11 +272,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await syncUserWithBackend(result.user, operation, providerName, businessName);
       return result.user;
     } catch (err) {
-      if (err instanceof Error) {
-        setErrorUser(err.message);
-      } else {
-        setErrorUser(`Failed to sign in with ${providerName}`);
-      }
+      setErrorUser(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
       setUserLoading(false);
@@ -360,14 +289,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setErrorUser(null);
     try {
       await signOut(auth);
-      setUser(null); // Clear backend user
-      setCurrentFirebaseUser(null); // Clear Firebase user
+      setUser(null);
+      setCurrentFirebaseUser(null);
+      setFirebaseToken(null); // Clear token in FetchContext
     } catch (err) {
-      if (err instanceof Error) {
-        setErrorUser(err.message);
-      } else {
-        setErrorUser("Logout failed");
-      }
+      setErrorUser(err instanceof Error ? err.message : String(err));
     } finally {
       setUserLoading(false);
     }
@@ -387,7 +313,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         updateUser,
         deleteUser,
         cleanError_User,
-        // Firebase methods
         loginWithEmail,
         signUpWithEmail,
         loginWithGoogle,

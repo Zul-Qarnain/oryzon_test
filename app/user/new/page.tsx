@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import CloseIcon from '@/components/CloseIcon';
 import { useUserContext } from '@/app/lib/context/UserContext';
 import { FcGoogle } from 'react-icons/fc';
@@ -10,6 +11,7 @@ const NewProjectPage = () => {
   const [inputProjectName, setInputProjectName] = useState('');
   const [projectName, setProjectName] = useState('');
   const [formError, setFormError] = useState('');
+  const router = useRouter();
 
   const { signUpWithGoogle, signUpWithFacebook, user_loading, error_user } = useUserContext();
 
@@ -26,11 +28,17 @@ const NewProjectPage = () => {
   const handleGoogleSignUp = async () => {
     if (!projectName) return;
     await signUpWithGoogle(projectName);
+    if (!error_user) { // Check if there was no error during sign-up
+      router.push('/');
+    }
   };
 
   const handleFacebookSignUp = async () => {
     if (!projectName) return;
     await signUpWithFacebook(projectName);
+    if (!error_user) { // Check if there was no error during sign-up
+      router.push('/');
+    }
   };
 
   const step1Image = "https://firebasestorage.googleapis.com/v0/b/console-assets.appspot.com/o/project_setup%2Fdesktop_create_project.png?alt=media&token=2f3c3690-5494-4bb6-8851-e699d033d02c";
