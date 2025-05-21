@@ -1,9 +1,94 @@
 {
-  "id": "4f720a83-3870-40b1-9eca-a71f48c14d42",
+  "id": "9ffd749f-323e-4ade-9dc9-c00cc42787a7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.businesses": {
+      "name": "businesses",
+      "schema": "",
+      "columns": {
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "businesses_user_id_users_user_id_fk": {
+          "name": "businesses_user_id_users_user_id_fk",
+          "tableFrom": "businesses",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "businesses_provider_user_id_users_provider_user_id_fk": {
+          "name": "businesses_provider_user_id_users_provider_user_id_fk",
+          "tableFrom": "businesses",
+          "tableTo": "users",
+          "columnsFrom": [
+            "provider_user_id"
+          ],
+          "columnsTo": [
+            "provider_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.chats": {
       "name": "chats",
       "schema": "",
@@ -14,6 +99,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "customer_id": {
           "name": "customer_id",
@@ -26,6 +117,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "started_at": {
           "name": "started_at",
@@ -46,12 +143,25 @@
           "type": "chat_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'OPEN'"
         }
       },
       "indexes": {},
       "foreignKeys": {
+        "chats_business_id_businesses_business_id_fk": {
+          "name": "chats_business_id_businesses_business_id_fk",
+          "tableFrom": "chats",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "business_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "chats_customer_id_customers_customer_id_fk": {
           "name": "chats_customer_id_customers_customer_id_fk",
           "tableFrom": "chats",
@@ -77,6 +187,19 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "chats_provider_user_id_users_provider_user_id_fk": {
+          "name": "chats_provider_user_id_users_provider_user_id_fk",
+          "tableFrom": "chats",
+          "tableTo": "users",
+          "columnsFrom": [
+            "provider_user_id"
+          ],
+          "columnsTo": [
+            "provider_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -96,11 +219,17 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "provider_user_id": {
           "name": "provider_user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "platform_type": {
           "name": "platform_type",
@@ -169,6 +298,19 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "connected_channels_business_id_businesses_business_id_fk": {
+          "name": "connected_channels_business_id_businesses_business_id_fk",
+          "tableFrom": "connected_channels",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "business_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "connected_channels_provider_user_id_users_provider_user_id_fk": {
           "name": "connected_channels_provider_user_id_users_provider_user_id_fk",
           "tableFrom": "connected_channels",
@@ -199,6 +341,18 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "channel_id": {
           "name": "channel_id",
@@ -241,6 +395,32 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "customers_business_id_businesses_business_id_fk": {
+          "name": "customers_business_id_businesses_business_id_fk",
+          "tableFrom": "customers",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "business_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customers_provider_user_id_users_provider_user_id_fk": {
+          "name": "customers_provider_user_id_users_provider_user_id_fk",
+          "tableFrom": "customers",
+          "tableTo": "users",
+          "columnsFrom": [
+            "provider_user_id"
+          ],
+          "columnsTo": [
+            "provider_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "customers_channel_id_connected_channels_channel_id_fk": {
           "name": "customers_channel_id_connected_channels_channel_id_fk",
           "tableFrom": "customers",
@@ -422,6 +602,18 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "customer_id": {
           "name": "customer_id",
           "type": "uuid",
@@ -432,13 +624,7 @@
           "name": "channel_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "order_status": {
           "name": "order_status",
@@ -489,6 +675,32 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "orders_business_id_businesses_business_id_fk": {
+          "name": "orders_business_id_businesses_business_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "business_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "orders_provider_user_id_users_provider_user_id_fk": {
+          "name": "orders_provider_user_id_users_provider_user_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "users",
+          "columnsFrom": [
+            "provider_user_id"
+          ],
+          "columnsTo": [
+            "provider_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "orders_customer_id_customers_customer_id_fk": {
           "name": "orders_customer_id_customers_customer_id_fk",
           "tableFrom": "orders",
@@ -514,19 +726,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "orders_user_id_users_user_id_fk": {
-          "name": "orders_user_id_users_user_id_fk",
-          "tableFrom": "orders",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -546,15 +745,15 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_id": {
-          "name": "user_id",
+        "business_id": {
+          "name": "business_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "channel_id": {
-          "name": "channel_id",
-          "type": "uuid",
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -630,28 +829,28 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "products_user_id_users_user_id_fk": {
-          "name": "products_user_id_users_user_id_fk",
+        "products_business_id_businesses_business_id_fk": {
+          "name": "products_business_id_businesses_business_id_fk",
           "tableFrom": "products",
-          "tableTo": "users",
+          "tableTo": "businesses",
           "columnsFrom": [
-            "user_id"
+            "business_id"
           ],
           "columnsTo": [
-            "user_id"
+            "business_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "products_channel_id_connected_channels_channel_id_fk": {
-          "name": "products_channel_id_connected_channels_channel_id_fk",
+        "products_provider_user_id_users_provider_user_id_fk": {
+          "name": "products_provider_user_id_users_provider_user_id_fk",
           "tableFrom": "products",
-          "tableTo": "connected_channels",
+          "tableTo": "users",
           "columnsFrom": [
-            "channel_id"
+            "provider_user_id"
           ],
           "columnsTo": [
-            "channel_id"
+            "provider_user_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -694,12 +893,6 @@
         },
         "password_hash": {
           "name": "password_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "business_name": {
-          "name": "business_name",
           "type": "text",
           "primaryKey": false,
           "notNull": false
