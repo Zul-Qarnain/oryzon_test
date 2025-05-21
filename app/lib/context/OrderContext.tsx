@@ -1,8 +1,9 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Order, OrderWithIncludes } from "@/backend/services/orders/orders.types";
+import { Order, OrderWithIncludes, CreateOrderData, CreateOrderItemData, UpdateOrderData } from "@/backend/services/orders/orders.types"; // Consolidated imports
 import type { OrderFilterOptions as OrderFilter } from "@/backend/services/orders/orders.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
+import { useUserContext } from "./UserContext";
 
 export interface PaginationOptions {
   limit?: number;
@@ -17,8 +18,8 @@ export interface OrderContextType {
   error_order: string | null;
   fetchOrder: (orderId: string, options?: { include?: string }) => Promise<ApiResponse<OrderWithIncludes>>;
   fetchOrders: (options?: { filter?: OrderFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: OrderWithIncludes[]; total: number }>>;
-  createOrder: (data: Partial<Order>) => Promise<ApiResponse<OrderWithIncludes>>;
-  updateOrder: (orderId: string, data: Partial<Order>) => Promise<ApiResponse<OrderWithIncludes>>;
+  createOrder: (data: Omit<CreateOrderData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; totalAmount: string; currency: string; orderItems: CreateOrderItemData[] }) => Promise<ApiResponse<OrderWithIncludes>>;
+  updateOrder: (orderId: string, data: UpdateOrderData) => Promise<ApiResponse<OrderWithIncludes>>; // Changed to UpdateOrderData
   deleteOrder: (orderId: string) => Promise<ApiResponse<null>>;
   cleanError_Order: () => void;
 }
@@ -27,6 +28,7 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export const OrderProvider = ({ children }: { children: ReactNode }) => {
   const { request } = useFetchContext();
+  const { FUser } = useUserContext(); // Get FUser from UserContext
   const [order, setOrder] = useState<OrderWithIncludes | null>(null);
   const [orders, setOrders] = useState<OrderWithIncludes[]>([]);
   const [total_order, setTotalOrder] = useState(0);
@@ -82,21 +84,41 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     [request]
   );
 
-  const createOrder = useCallback(async (data: Partial<Order>): Promise<ApiResponse<OrderWithIncludes>> => {
-    setOrderLoading(true);
-    setErrorOrder(null);
-    const response = await request<OrderWithIncludes>("POST", "/api/orders", data);
+  const createOrder = useCallback(
+    async (data: Omit<CreateOrderData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; totalAmount: string; currency: string; orderItems: CreateOrderItemData[] }): Promise<ApiResponse<OrderWithIncludes>> => {
+      setOrderLoading(true);
+      setErrorOrder(null);
 
-    if (response.error) {
-      setErrorOrder(response.error);
-    } else {
-      setOrder(response.result); // Optionally update current order or refetch list
-    }
-    setOrderLoading(false);
-    return response;
-  }, [request]);
+      if (!data.businessId || !data.customerId || !data.channelId || !data.totalAmount || !data.currency || !data.orderItems || data.orderItems.length === 0) {
+        const errorMsg = "businessId, customerId, channelId, totalAmount, currency, and at least one orderItem are required.";
+        setErrorOrder(errorMsg);
+        setOrderLoading(false);
+        return { error: errorMsg, result: null, statusCode: 400 };
+      }
 
-  const updateOrder = useCallback(async (orderId: string, data: Partial<Order>): Promise<ApiResponse<OrderWithIncludes>> => {
+      const completeOrderData: CreateOrderData = {
+        ...data,
+        providerUserId: FUser?.uid || null, // Set providerUserId from FUser, or null if not available
+      };
+
+      const response = await request<OrderWithIncludes>("POST", "/api/orders", completeOrderData);
+
+      if (response.error) {
+        setErrorOrder(response.error);
+      } else {
+        setOrder(response.result);
+        if (response.result) {
+          setOrders(prevOrders => [response.result!, ...prevOrders.filter(o => o.orderId !== response.result!.orderId)]);
+          setTotalOrder(prevTotal => prevTotal + 1);
+        }
+      }
+      setOrderLoading(false);
+      return response;
+    },
+    [request, FUser]
+  );
+
+  const updateOrder = useCallback(async (orderId: string, data: UpdateOrderData): Promise<ApiResponse<OrderWithIncludes>> => {
     setOrderLoading(true);
     setErrorOrder(null);
     const response = await request<OrderWithIncludes>("PUT", `/api/orders/${orderId}`, data);

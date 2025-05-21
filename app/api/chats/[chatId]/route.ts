@@ -1,12 +1,14 @@
 import { chatsService } from '@/backend/services/chats/chats.service';
 import { ChatIncludeOptions, UpdateChatData } from '@/backend/services/chats/chats.types';
-import { parseIncludeQuery } from '../../utils';
+import { parseIncludeQuery } from '@/app/api/utils'; // Corrected import path
 import { chatStatusEnum } from '@/db/schema';
 
+// Updated valid includes for a chat
 const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
+  'business',
+  'userViaProviderId',
   'customer',
   'connectedChannel',
-  // 'user', // userId removed from chats
   'messages',
 ];
 

@@ -114,12 +114,13 @@ export const orderItems = pgTable('order_items', {
 
 export const chats = pgTable('chats', {
   chatId: uuid('chat_id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').notNull().references(() => businesses.businessId), // Added businessId
   customerId: uuid('customer_id').notNull().references(() => customers.customerId),
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
-  status: chatStatusEnum('status').default('OPEN'),
+  status: chatStatusEnum('status').default('OPEN').notNull(), // Added .notNull()
 });
 
 export const messages = pgTable('messages', {
@@ -238,6 +239,10 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
+  business: one(businesses, { // Added business relation
+    fields: [chats.businessId],
+    references: [businesses.businessId],
+  }),
   customer: one(customers, {
     fields: [chats.customerId],
     references: [customers.customerId],

@@ -1,7 +1,8 @@
 import { db } from '@/db';
-import { chats, messages, customers, connectedChannels, users } from '@/db/schema';
+import { chats, messages, customers, connectedChannels, users, businesses } from '@/db/schema'; // Added businesses
 import {
   Chat,
+  NewChat, // Added NewChat
   CreateChatData,
   UpdateChatData,
   GetChatByIdOptions,
@@ -15,12 +16,16 @@ import { and, count, eq, ilike, inArray, desc, asc, gte, lte } from 'drizzle-orm
 export class ChatsService {
   constructor() {}
 
-  async createChat(data: CreateChatData): Promise<Chat> {
+  async createChat(data: CreateChatData): Promise<Chat> { // CreateChatData now includes businessId and optional providerUserId
     const [newChat] = await db
       .insert(chats)
       .values({
-        ...data,
+        businessId: data.businessId,
+        customerId: data.customerId,
+        channelId: data.channelId,
+        providerUserId: data.providerUserId, // Will be null if not provided
         status: data.status || 'OPEN', // Default status
+        // startedAt and lastMessageAt have defaults in schema or are set by triggers/service logic
       })
       .returning();
     return newChat;
@@ -30,9 +35,10 @@ export class ChatsService {
     const query = db.query.chats.findFirst({
       where: eq(chats.chatId, chatId),
       with: {
+        business: options?.include?.business ? true : undefined, // Added business
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined, // Added userViaProviderId
         customer: options?.include?.customer ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
-        // user: options?.include?.user ? true : undefined, // userId removed from chats
         messages: options?.include?.messages 
           ? { 
               limit: typeof options.include.messages === 'boolean' ? undefined : options.include.messages.limit,
@@ -58,42 +64,48 @@ export class ChatsService {
     const page = options?.limit ?? 10;
     const offset = options?.offset ?? 0;
 
-    const filter = options?.filter as ChatFilterOptions | undefined;
+    const filter = options?.filter; // Type is Partial<Pick<Chat, 'businessId' | ...>>
     const conditions = [];
 
+    if (filter?.businessId) { // Added businessId filter
+      conditions.push(eq(chats.businessId, filter.businessId));
+    }
+    if (filter?.providerUserId) { // Added providerUserId filter
+      conditions.push(eq(chats.providerUserId, filter.providerUserId));
+    }
     if (filter?.customerId) {
       conditions.push(eq(chats.customerId, filter.customerId));
     }
     if (filter?.channelId) {
       conditions.push(eq(chats.channelId, filter.channelId));
     }
-    // if (filter?.userId) { // userId removed from chats
-    //   conditions.push(eq(chats.userId, filter.userId));
-    // }
     if (filter?.status) {
       conditions.push(eq(chats.status, filter.status));
     }
-    if (filter?.startedAtBefore) {
-      conditions.push(lte(chats.startedAt, filter.startedAtBefore));
-    }
-    if (filter?.startedAtAfter) {
-      conditions.push(gte(chats.startedAt, filter.startedAtAfter));
-    }
-    if (filter?.lastMessageAtBefore) {
-      conditions.push(lte(chats.lastMessageAt, filter.lastMessageAtBefore));
-    }
-    if (filter?.lastMessageAtAfter) {
-      conditions.push(gte(chats.lastMessageAt, filter.lastMessageAtAfter));
-    }
+    // Date range filters (startedAtBefore, etc.) are part of ChatFilterOptions, not GetAllChatsOptions.filter.
+    // Removing them to match the current type definition for GetAllChatsOptions.
+    // if (filter?.startedAtBefore) {
+    //   conditions.push(lte(chats.startedAt, filter.startedAtBefore));
+    // }
+    // if (filter?.startedAtAfter) {
+    //   conditions.push(gte(chats.startedAt, filter.startedAtAfter));
+    // }
+    // if (filter?.lastMessageAtBefore) {
+    //   conditions.push(lte(chats.lastMessageAt, filter.lastMessageAtBefore));
+    // }
+    // if (filter?.lastMessageAtAfter) {
+    //   conditions.push(gte(chats.lastMessageAt, filter.lastMessageAtAfter));
+    // }
 
     const chatsQuery = db.query.chats.findMany({
-      where: and(...conditions),
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       limit: page,
       offset: offset,
       with: {
+        business: options?.include?.business ? true : undefined, // Added business
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined, // Added userViaProviderId
         customer: options?.include?.customer ? true : undefined,
         connectedChannel: options?.include?.connectedChannel ? true : undefined,
-        // user: options?.include?.user ? true : undefined, // userId removed from chats
         messages: options?.include?.messages 
           ? { 
               limit: typeof options.include.messages === 'boolean' ? undefined : options.include.messages.limit,
@@ -112,7 +124,7 @@ export class ChatsService {
       orderBy: [desc(chats.lastMessageAt), desc(chats.startedAt)]
     });
 
-    const totalQuery = db.select({ value: count() }).from(chats).where(and(...conditions));
+    const totalQuery = db.select({ value: count() }).from(chats).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([chatsQuery, totalQuery]);
     
@@ -158,28 +170,56 @@ export class ChatsService {
   async handleNewMessage(
     messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId'| 'timestamp'|"platformMessageId">,
     customerId: string,
-    connectedPageID: string
-    // userId:string // userId removed from chats
+    channelId: string // Renamed from connectedPageID for clarity
   ): Promise<(typeof messages.$inferSelect)[]> {
-    // 1. Find the chat
-    const foundChat = await db.query.chats.findFirst({
+    // 1. Find the chat or determine businessId and providerUserId for new chat
+    const foundChat = await db.query.chats.findFirst({ // Changed let to const
       where: and(
         eq(chats.customerId, customerId),
-        eq(chats.channelId, connectedPageID),
+        eq(chats.channelId, channelId),
       ),
     });
 
     let chatId: string;
+    let businessIdToUse: string;
+    let providerUserIdToUse: string | null = null;
 
     if (!foundChat) {
-      // If chat not found, create a new one
-      const newChat = await this.createChat({
-      customerId: customerId,
-      channelId: connectedPageID,
-      // userId: userId, // userId removed from chats
-      // status will default to 'OPEN' as per createChat method
-      // startedAt will be set by the database default
+      // Need to get businessId and providerUserId for the new chat.
+      // Typically, channelId would belong to a business.
+      const channelDetails = await db.query.connectedChannels.findFirst({
+        where: eq(connectedChannels.channelId, channelId),
+        columns: {
+          businessId: true,
+          providerUserId: true, // This is the providerUserId associated with the channel (e.g. user who connected it)
+        }
       });
+
+      if (!channelDetails) {
+        console.error(`Channel with ID ${channelId} not found. Cannot create chat.`);
+        // Or throw an error / return an empty array or error indicator
+        return []; 
+      }
+      businessIdToUse = channelDetails.businessId;
+      
+      // For the chat's providerUserId, we might want to use the customer's providerUserId if available,
+      // or the channel's, or leave it null. Let's assume we try to get it from the customer first.
+      const customerDetails = await db.query.customers.findFirst({
+        where: eq(customers.customerId, customerId),
+        columns: { providerUserId: true }
+      });
+      providerUserIdToUse = customerDetails?.providerUserId || channelDetails.providerUserId || null;
+
+
+      // If chat not found, create a new one
+      const newChatData: CreateChatData = {
+        businessId: businessIdToUse,
+        customerId: customerId,
+        channelId: channelId,
+        providerUserId: providerUserIdToUse,
+        // status will default to 'OPEN' as per createChat method
+      };
+      const newChat = await this.createChat(newChatData);
       chatId = newChat.chatId;
     } else {
       chatId = foundChat.chatId;
