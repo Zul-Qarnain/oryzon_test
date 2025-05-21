@@ -16,7 +16,7 @@ const HomePage: React.FC = () => {
     // Fetch channels only if a user is logged in (FUser exists)
     // and channels haven't been fetched yet or need refreshing.
     if (FUser && channels.length === 0) { // Basic condition, adjust as needed
-      fetchChannels({ filter: { userId: user?.userId } }); // Assuming user object has userId
+      fetchChannels({ filter: { providerUserId: user?.providerUserId } }); // Assuming user object has providerUserId
     }
   }, [FUser, user, fetchChannels, channels.length]);
 

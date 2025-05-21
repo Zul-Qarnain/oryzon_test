@@ -61,8 +61,8 @@ export class ChannelsService {
     const filter = options?.filter as ChannelFilterOptions | undefined;
     const conditions = [];
 
-    if (filter?.userId) {
-      conditions.push(eq(connectedChannels.userId, filter.userId));
+    if (filter?.providerUserId) {
+      conditions.push(eq(connectedChannels.providerUserId, filter.providerUserId));
     }
     if (filter?.platformType) {
       conditions.push(eq(connectedChannels.platformType, filter.platformType));

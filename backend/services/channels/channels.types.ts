@@ -28,18 +28,18 @@ export interface GetChannelByIdOptions {
 export interface GetAllChannelsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<ConnectedChannel, 'userId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
+  filter?: Partial<Pick<ConnectedChannel, 'providerUserId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
   orderBy?: keyof ConnectedChannel;
   include?: ChannelIncludeOptions;
 }
 
 // Data for creating a new channel
 export type CreateChannelData = Omit<NewConnectedChannel, 'channelId' | 'createdAt' | 'updatedAt'> & {
-  userId: User['userId']; // Ensure userId is provided
+  providerUserId: User['providerUserId']; // Ensure providerUserId is provided
 };
 
 // Data for updating an existing channel
-export type UpdateChannelData = Partial<Omit<NewConnectedChannel, 'channelId' | 'userId' | 'createdAt' | 'updatedAt'>>;
+export type UpdateChannelData = Partial<Omit<NewConnectedChannel, 'channelId' | 'providerUserId' | 'createdAt' | 'updatedAt'>>;
 
 // Data for updating many channels
 export interface UpdateManyChannelsData {
@@ -50,7 +50,7 @@ export interface UpdateManyChannelsData {
 // Filter options for operations like updateMany or deleteMany
 export interface ChannelFilterOptions {
   ids?: ConnectedChannel['channelId'][];
-  userId?: User['userId'];
+  providerUserId?: User['providerUserId'];
   platformType?: ConnectedChannel['platformType'];
   isActive?: ConnectedChannel['isActive'];
   channelName?: ConnectedChannel['channelName']; // Added channelName for filtering

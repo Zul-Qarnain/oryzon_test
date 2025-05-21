@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const includeQuery = searchParams.get('include');
     const { limit, offset } = parsePaginationParams(searchParams, 10, 0, 100);
 
-    const userId = getStringFilterParam(searchParams, 'userId');
+    const providerUserId = getStringFilterParam(searchParams, 'providerUserId');
     const platformType = getStringFilterParam(searchParams, 'platformType');
     const isActive = getStringFilterParam(searchParams, 'isActive');
     const channelName = getStringFilterParam(searchParams, 'channelName');
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       filter: {},
     };
 
-    if (userId) options.filter!.userId = userId;
+    if (providerUserId) options.filter!.providerUserId = providerUserId;
     if (platformType && isPlatformType(platformType)) options.filter!.platformType = platformType;
     if (isActive !== null && isActive !== undefined) options.filter!.isActive = isActive === 'true';
     if (channelName) options.filter!.channelName = channelName;

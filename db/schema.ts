@@ -29,14 +29,14 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'), // Nullable
   businessName: text('business_name'),
   loginProvider: loginProviderEnum('login_provider'),
-  providerUserId: text('provider_user_id'), // Nullable
+  providerUserId: text('provider_user_id').unique(), // Nullable, but must be unique if set
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const connectedChannels = pgTable('connected_channels', {
   channelId: uuid('channel_id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.userId),
+  providerUserId: text('provider_user_id').notNull().references(() => users.providerUserId),
   platformType: platformTypeEnum('platform_type').notNull(),
   platformSpecificId: text('platform_specific_id').notNull(),
   description: text('description'), // Optional description for the channel
@@ -128,8 +128,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 export const connectedChannelsRelations = relations(connectedChannels, ({ one, many }) => ({
   user: one(users, {
-    fields: [connectedChannels.userId],
-    references: [users.userId],
+    fields: [connectedChannels.providerUserId],
+    references: [users.providerUserId],
   }),
   customers: many(customers),
   orders: many(orders),

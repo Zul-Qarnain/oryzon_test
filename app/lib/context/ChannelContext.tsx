@@ -1,8 +1,9 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { ConnectedChannel, ConnectedChannelWithIncludes } from "@/backend/services/channels/channels.types";
+import { ConnectedChannel, ConnectedChannelWithIncludes, CreateChannelData } from "@/backend/services/channels/channels.types";
 import type { ChannelFilterOptions as ChannelFilter } from "@/backend/services/channels/channels.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
+import { useUserContext } from "./UserContext"; // Import useUserContext
 
 export interface PaginationOptions {
   limit?: number;
@@ -17,7 +18,7 @@ export interface ChannelContextType {
   error_channel: string | null;
   fetchChannel: (channelId: string, options?: { include?: string }) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
   fetchChannels: (options?: { filter?: ChannelFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ConnectedChannelWithIncludes[]; total: number }>>;
-  createChannel: (data: Partial<ConnectedChannel>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
+  createChannel: (data: Omit<CreateChannelData, 'providerUserId'>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
   updateChannel: (channelId: string, data: Partial<ConnectedChannel>) => Promise<ApiResponse<ConnectedChannelWithIncludes>>;
   deleteChannel: (channelId: string) => Promise<ApiResponse<null>>;
   cleanError_Channel: () => void;
@@ -27,6 +28,7 @@ const ChannelContext = createContext<ChannelContextType | undefined>(undefined);
 
 export const ChannelProvider = ({ children }: { children: ReactNode }) => {
   const { request } = useFetchContext();
+  const { FUser } = useUserContext(); // Get FUser from UserContext
   const [channel, setChannel] = useState<ConnectedChannelWithIncludes | null>(null);
   const [channels, setChannels] = useState<ConnectedChannelWithIncludes[]>([]);
   const [total_channel, setTotalChannel] = useState(0);
@@ -82,19 +84,39 @@ export const ChannelProvider = ({ children }: { children: ReactNode }) => {
     [request]
   );
 
-  const createChannel = useCallback(async (data: Partial<ConnectedChannel>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
-    setChannelLoading(true);
-    setErrorChannel(null);
-    const response = await request<ConnectedChannelWithIncludes>("POST", "/api/channels", data);
+  const createChannel = useCallback(
+    async (data: Omit<CreateChannelData, 'providerUserId'>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
+      setChannelLoading(true);
+      setErrorChannel(null);
 
-    if (response.error) {
-      setErrorChannel(response.error);
-    } else {
-      setChannel(response.result); // Optionally update current channel or refetch list
-    }
-    setChannelLoading(false);
-    return response;
-  }, [request]);
+      if (!FUser || !FUser.uid) {
+        const errorMsg = "User is not logged in or provider information is missing.";
+        setErrorChannel(errorMsg);
+        setChannelLoading(false);
+        return { error: errorMsg, result: null, statusCode: 401 };
+      }
+
+      const completeChannelData: CreateChannelData = {
+        ...data,
+        providerUserId: FUser.uid,
+      };
+
+      const response = await request<ConnectedChannelWithIncludes>("POST", "/api/channels", completeChannelData);
+
+      if (response.error) {
+        setErrorChannel(response.error);
+      } else {
+        setChannel(response.result);
+        if (response.result) {
+          setChannels(prevChannels => [response.result!, ...prevChannels.filter(ch => ch.channelId !== response.result!.channelId)]);
+          setTotalChannel(prevTotal => prevTotal + 1); // Consider if total should be refetched or accurately managed
+        }
+      }
+      setChannelLoading(false);
+      return response;
+    },
+    [request, FUser]
+  );
 
   const updateChannel = useCallback(async (channelId: string, data: Partial<ConnectedChannel>): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
     setChannelLoading(true);
