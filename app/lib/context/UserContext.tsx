@@ -42,7 +42,7 @@ export interface UserContextType {
   loginWithFacebook: () => Promise<FirebaseUser | null>;
   signUpWithFacebook: (businessName: string) => Promise<FirebaseUser | null>;
   logoutUser: () => Promise<void>;
-  currentFirebaseUser: FirebaseUser | null;
+  FUser: FirebaseUser | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -50,17 +50,24 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { request, setFirebaseToken } = useFetchContext(); // Get request and setFirebaseToken from FetchContext
   const [user, setUser] = useState<UserWithIncludes | null>(null);
-  const [currentFirebaseUser, setCurrentFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [FUser, setFUser] = useState<FirebaseUser | null>(null);
   const [users, setUsers] = useState<UserWithIncludes[]>([]);
   const [total_user, setTotalUser] = useState(0);
-  const [user_loading, setUserLoading] = useState(false); // This can be driven by FetchContext's loading if preferred
+  const [user_loading, setUserLoading] = useState(true); // This can be driven by FetchContext's loading if preferred
   const [error_user, setErrorUser] = useState<string | null>(null);
 
   useEffect(() => {
     setUserLoading(true);
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setCurrentFirebaseUser(fbUser);
+      setFUser(fbUser);
       if (fbUser) {
+        setUser({
+          name: fbUser?.displayName || "",
+          email: fbUser?.email || "",
+          phone: fbUser?.phoneNumber || "",
+          providerUserId: fbUser?.uid || "",
+          loginProvider: fbUser?.providerData[0]?.providerId || 'EMAIL',
+        } as UserWithIncludes);
         try {
           const token = await getIdToken(fbUser);
           setFirebaseToken(token); // Set token in FetchContext
@@ -75,11 +82,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setFirebaseToken(null); // Clear token in FetchContext
         setUser(null);
+        
       }
       setUserLoading(false);
     });
     return () => unsubscribe();
-  }, [setFirebaseToken]);
+  }, []);
 
   const fetchUser = useCallback(async (userId: string, options?: { include?: string }): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
@@ -193,7 +201,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
       if (existingUser) {
         setUser(existingUser);
-        setCurrentFirebaseUser(firebaseUser);
+        setFUser(firebaseUser);
         return existingUser;
       } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
         const userData: CreateUserData = {
@@ -214,7 +222,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(createResp.error || "Failed to create user in backend");
         }
         setUser(createResp.result);
-        setCurrentFirebaseUser(firebaseUser);
+        setFUser(firebaseUser);
         return createResp.result;
       } else if (operation === 'LOGIN' && provider === 'EMAIL' && !existingUser) {
         throw new Error("User not found with this email. Please sign up or try a different login method.");
@@ -224,7 +232,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const message = err instanceof Error ? err.message : String(err);
       setErrorUser(message);
       await signOut(auth).catch(e => console.error("Firebase signout failed during error handling:", e));
-      setCurrentFirebaseUser(null);
+      setFUser(null);
       setFirebaseToken(null);
       setUser(null);
       return null;
@@ -289,7 +297,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
       setUser(null);
-      setCurrentFirebaseUser(null);
+      setFUser(null);
       setFirebaseToken(null); // Clear token in FetchContext
     } catch (err) {
       setErrorUser(err instanceof Error ? err.message : String(err));
@@ -319,7 +327,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         loginWithFacebook,
         signUpWithFacebook,
         logoutUser,
-        currentFirebaseUser,
+        FUser,
       }}
     >
       {children}

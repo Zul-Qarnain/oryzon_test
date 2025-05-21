@@ -6,12 +6,12 @@ import { useUserContext } from "@/app/lib/context/UserContext";
 
 export default function Home() {
   const router = useRouter();
-  const { user, user_loading } = useUserContext();
+  const { user, user_loading,logoutUser } = useUserContext();
 
   useEffect(() => {
     // If user data is not loading and there is no user, redirect to the new user page.
     if (!user_loading && !user) {
-      router.push("/user/new");
+      router.push("/user/signIn");
     }
   }, [user, user_loading, router]); // Dependencies for the effect
 
@@ -26,7 +26,7 @@ export default function Home() {
 
   // If there's no user (and not loading), display a message or redirect.
   // This state might be briefly visible before redirection or if redirection fails.
-  if (!user) {
+  else if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Redirecting to login...</p>
@@ -63,11 +63,10 @@ export default function Home() {
         </ol>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
+          <button
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
             rel="noopener noreferrer"
+            onClick={() => logoutUser()  }
           >
             <Image
               className="dark:invert"
@@ -77,7 +76,7 @@ export default function Home() {
               height={20}
             />
             Deploy now
-          </a>
+          </button>
           <a
             className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
             href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
