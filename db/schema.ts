@@ -39,6 +39,7 @@ export const businesses = pgTable('businesses', {
   userId: uuid('user_id').notNull().references(() => users.userId), // Link to primary user ID
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   name: text('name').notNull(),
+  description: text('description'), // New field
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

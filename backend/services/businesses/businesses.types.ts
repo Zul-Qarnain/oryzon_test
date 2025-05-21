@@ -20,9 +20,11 @@ export interface CreateBusinessPayload {
   userId: string; // UUID of the user creating the business
   providerUserId?: string | null; // Optional providerUserId
   name: string;
+  description?: string | null;
 }
 
 export interface UpdateBusinessPayload {
   name?: string;
+  description?: string | null;
   // Add other updatable fields as necessary
 }

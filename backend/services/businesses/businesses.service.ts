@@ -48,6 +48,7 @@ export class BusinessesService {
       userId: payload.userId,
       providerUserId: payload.providerUserId,
       name: payload.name,
+      description: payload.description ?? null,
       // createdAt and updatedAt are handled by the database default
     };
     const result = await db.insert(businesses).values(newBusinessData).returning();
@@ -95,6 +96,7 @@ export class BusinessesService {
         userId: businesses.userId,
         providerUserId: businesses.providerUserId,
         name: businesses.name,
+        description: businesses.description,
         createdAt: businesses.createdAt,
         updatedAt: businesses.updatedAt,
       })

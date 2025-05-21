@@ -9,12 +9,14 @@ export async function POST(request: NextRequest) {
     // TODO: Add validation for body (e.g., with Zod)
     // TODO: Add authentication and authorization - ensure the user creating the business is valid
     // For example, extract userId from authenticated session instead of relying on payload for it.
+    // Supports optional 'description' field.
 
     if (!body.userId || !body.name) {
       return NextResponse.json({ message: 'User ID and business name are required' }, { status: 400 });
     }
 
     const newBusiness = await businessesService.createBusiness(body);
+    // Response includes 'description' if provided
     return NextResponse.json(newBusiness, { status: 201 });
   } catch (error) {
     console.error('Error creating business:', error);

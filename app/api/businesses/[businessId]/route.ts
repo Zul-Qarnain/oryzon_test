@@ -58,11 +58,13 @@ export async function PUT(
   try {
     const body = await request.json() as UpdateBusinessPayload;
     // TODO: Add validation for body (e.g., with Zod)
+    // Supports updating 'description' field.
     const updatedBusiness = await businessesService.updateBusiness(businessId, body);
 
     if (!updatedBusiness) {
       return new Response(JSON.stringify({ message: 'Business not found or update failed' }), { status: 404 });
     }
+    // Response includes 'description' if present
     return new Response(JSON.stringify(updatedBusiness), { status: 200 });
   } catch (error) {
     console.error('Error updating business:', error);
