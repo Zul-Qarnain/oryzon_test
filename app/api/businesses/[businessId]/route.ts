@@ -8,7 +8,8 @@ const VALID_BUSINESS_INCLUDES: (keyof BusinessWithRelations)[] = [
   'userViaProviderId',
   'connectedChannels',
   'products',
-  'customers',
+  'customers',6
+  
   'orders',
 ];
 
