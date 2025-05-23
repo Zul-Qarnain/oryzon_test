@@ -45,7 +45,7 @@ const NewChannelForBusinessPage: React.FC = () => {
     if (error_channel) {
       if (step === 1) setFormErrorStep1(error_channel);
       else if (step === 2) setFormErrorStep2(error_channel);
-      else alert(`Error: ${error_channel}`); // Fallback for unhandled step
+      else console.log(`Error: ${error_channel}`); // Fallback for unhandled step
     }
   }, [error_channel, step]);
 

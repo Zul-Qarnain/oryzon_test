@@ -9,6 +9,7 @@ import CreateBusinessCard from '@/app/components/CreateBusinessCard';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext'; // To ensure user is loaded
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const HomePage: React.FC = () => {
   const { businesses, fetchBusinesses, businessLoading, businessError } = useBusinessContext();
@@ -20,10 +21,33 @@ const HomePage: React.FC = () => {
     if (user && businesses.length === 0) { // Basic condition, adjust as needed
       // Ensure the filter matches what your API expects for businesses
       // This might be user.userId or user.providerUserId
+      console.log(JSON.stringify(user));
       fetchBusinesses({ filter: { userId: user!.userId } }); 
     }
   }, [FUser, user, fetchBusinesses, businesses.length]);
 
+   const router = useRouter();
+  
+    useEffect(() => {
+      // If user data is not loading and there is no user, redirect to the new user page.
+      if (!user_loading && !user) {
+        router.push("/user/signIn");
+      }
+    }, [user, user_loading, router]); // Dependencies for the effect
+  
+    // Display a loading message while user data is being fetched.
+   
+  
+    // If there's no user (and not loading), display a message or redirect.
+    // This state might be briefly visible before redirection or if redirection fails.
+     if (!user) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <p>Redirecting to login...</p>
+        </div>
+      );
+    }
+  
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)]">

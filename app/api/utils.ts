@@ -68,6 +68,6 @@ export function parsePaginationParams(
  * @returns The string value of the parameter, or undefined if not present.
  */
 export function getStringFilterParam(searchParams: URLSearchParams, paramName: string): string | undefined {
-    const value = searchParams.get(paramName);
+    const value = searchParams.get(`filter[${paramName}]`);
     return value ? value : undefined;
 }

@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
 
     const email = getStringFilterParam(searchParams, 'email');
     const loginProvider = getStringFilterParam(searchParams, 'loginProvider');
-    const providerUserId = getStringFilterParam(searchParams, 'providerUserId'); // New filter
+    const providerUserId = getStringFilterParam(searchParams, 'providerUserId'); 
+    console.log('loginProvider', loginProvider);
+    console.log('providerUserId', providerUserId);
     const name = getStringFilterParam(searchParams, 'name'); // New filter
     const phone = getStringFilterParam(searchParams, 'phone'); // New filter
     // businessName filter removed

@@ -1,139 +1,89 @@
 "use client";
-import Image from "next/image";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useUserContext } from "@/app/lib/context/UserContext";
 
-export default function Home() {
-  const router = useRouter();
-  const { user, user_loading,logoutUser } = useUserContext();
+import React, { useEffect } from 'react';
+import Header from '@/app/components/Header';
+// import ChannelCard from '@/app/components/ChannelCard';
+// import CreateChannelCard from '@/app/components/CreateChannelCard';
+import BusinessCard from '@/app/components/BusinessCard';
+import CreateBusinessCard from '@/app/components/CreateBusinessCard';
+import { useBusinessContext } from '@/app/lib/context/BusinessContext';
+import { useUserContext } from '@/app/lib/context/UserContext'; // To ensure user is loaded
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+const HomePage: React.FC = () => {
+  const { businesses, fetchBusinesses, businessLoading, businessError } = useBusinessContext();
+  const { user, user_loading, FUser } = useUserContext(); // Access user and FUser
 
   useEffect(() => {
-    // If user data is not loading and there is no user, redirect to the new user page.
-    if (!user_loading && !user) {
-      router.push("/user/signIn");
+    // Fetch businesses only if a user is logged in (FUser exists)
+    // and businesses haven't been fetched yet or need refreshing.
+    if (user && businesses.length === 0) { // Basic condition, adjust as needed
+      // Ensure the filter matches what your API expects for businesses
+      // This might be user.userId or user.providerUserId
+      console.log(JSON.stringify(user));
+      fetchBusinesses({ filter: { userId: user!.userId } }); 
     }
-  }, [user, user_loading, router]); // Dependencies for the effect
+  }, [FUser, user, fetchBusinesses, businesses.length]);
 
-  // Display a loading message while user data is being fetched.
-  if (user_loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  // If there's no user (and not loading), display a message or redirect.
-  // This state might be briefly visible before redirection or if redirection fails.
-  else if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Redirecting to login...</p>
-      </div>
-    );
-  }
-
-  // If the user is logged in, display their name and the rest of the page.
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        {/* Display user's name. Fallback to email if name is not available. */}
-        <h1 className="text-2xl font-semibold">Welcome, {user.name || user.email}!</h1>
-        
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <button
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            rel="noopener noreferrer"
-            onClick={() => logoutUser()  }
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </button>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+   const router = useRouter();
+  
+    useEffect(() => {
+      // If user data is not loading and there is no user, redirect to the new user page.
+      if (!user_loading && !user) {
+        router.push("/user/signIn");
+      }
+    }, [user, user_loading, router]); // Dependencies for the effect
+  
+    // Display a loading message while user data is being fetched.
+   
+  
+    // If there's no user (and not loading), display a message or redirect.
+    // This state might be briefly visible before redirection or if redirection fails.
+     if (!user) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <p>Redirecting to login...</p>
         </div>
+      );
+    }
+  
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)]">
+      <Header />
+      <main className="p-4 md:p-8">
+        <h2 className="text-2xl font-semibold mb-6 text-[var(--text-page-heading)]">My Businesses</h2>
+        
+        {(user_loading || businessLoading) && (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin text-[var(--icon-accent-primary)]" />
+            <p className="ml-4 text-lg">Loading businesses...</p>
+          </div>
+        )}
+
+        {businessError && !businessLoading && (
+          <div className="text-center text-[var(--text-error)] bg-[var(--bg-error-transparent)] p-4 rounded-md">
+            Error loading businesses: {businessError}
+          </div>
+        )}
+
+        {!user_loading && !businessLoading && !businessError && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <CreateBusinessCard /> 
+            {businesses.map((business) => (
+              <BusinessCard key={business.businessId} business={business} />
+            ))}
+          </div>
+        )}
+         {!user_loading && !businessLoading && !businessError && businesses.length === 0 && (
+          <div className="col-span-full text-center py-10">
+            <p className="text-[var(--text-on-dark-muted)] text-lg">No businesses found. Get started by creating one!</p>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
-}
+};
+
+export default HomePage;

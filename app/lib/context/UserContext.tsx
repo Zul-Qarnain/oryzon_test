@@ -210,6 +210,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       let existingUser: UserWithIncludes | null = null;
       if (findResp.result && findResp.result.total > 0 && findResp.result.data[0]) {
         existingUser = findResp.result.data[0];
+        console.log(JSON.stringify(findResp.result));
       } else if (findResp.error && findResp.statusCode !== 404) { // Allow 404 for user not found
          throw new Error(findResp.error || "Failed to check existing user");
       }

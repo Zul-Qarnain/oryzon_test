@@ -36,7 +36,7 @@ const NewChannelPage = () => {
         setFormErrorStep2(error_channel);
       } else {
          // Generic error display or perhaps a toast notification system would be better
-        alert(`Error: ${error_channel}`);
+        console.log(`Error: ${error_channel}`);
       }
     }
   }, [error_channel, step, channelName, description, platformSpecificId, accessToken, refreshToken]);
