@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { BusinessWithRelations } from '@/backend/services/businesses/businesses.types';
 import { Briefcase, Users, ShoppingBag, MessageSquare, Settings } from 'lucide-react'; // Example icons
 
@@ -9,10 +10,10 @@ interface BusinessCardProps {
 }
 
 const BusinessCard: React.FC<BusinessCardProps> = ({ business }) => {
-  // TODO: Implement navigation to a business detail page or actions like edit/delete
+  const router = useRouter();
+
   const handleViewBusiness = () => {
-    console.log(`View business: ${business.name}`);
-    // Example: router.push(`/businesses/${business.businessId}`);
+    router.push(`/business/${business.businessId}`);
   };
 
   return (

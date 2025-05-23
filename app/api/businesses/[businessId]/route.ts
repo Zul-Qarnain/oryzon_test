@@ -15,8 +15,9 @@ const VALID_BUSINESS_INCLUDES: (keyof BusinessWithRelations)[] = [
 
 export async function GET(
   request: Request,
-  { params }: { params: { businessId: string } }
+  context: { params: Promise<{ businessId: string }> }
 ) {
+  const params = await context.params;
   const { businessId } = params;
 
   if (!businessId) {
@@ -48,8 +49,9 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { businessId: string } }
+  context: { params: Promise<{ businessId: string }> }
 ) {
+  const params = await context.params;
   const { businessId } = params;
 
   if (!businessId) {
@@ -76,8 +78,9 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { businessId: string } }
+  context: { params: Promise<{ businessId: string }> }
 ) {
+  const params = await context.params;
   const { businessId } = params;
 
   if (!businessId) {
