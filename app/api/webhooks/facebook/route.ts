@@ -4,6 +4,7 @@ import {
     FacebookMessageParser,
     FacebookMessagePayloadMessagingEntry as FacebookMessageObject,
 } from 'fb-messenger-bot-api';
+import { handleNewMessageFromPlatform } from '@/backend/services/messenger/handleMsg';
 
 export async function GET(request: NextRequest): Promise<Response> {
     const { searchParams } = new URL(request.url);
@@ -27,27 +28,12 @@ export async function POST(request: NextRequest): Promise<Response> {
         const messages: FacebookMessageObject[] = FacebookMessageParser.parsePayload(body);
 
         for (const message of messages) {
-            const senderId = message.sender.id;
+          await handleNewMessageFromPlatform(
+            message.recipient.id,
+            message,
+            message.sender.id
+          )
 
-            if (message.message?.attachments) {
-                for (const attachment of message.message.attachments) {
-                    if (attachment.type === 'image') {
-                        // Check if payload has url property
-                        const imageUrl = 'url' in attachment.payload! ? attachment.payload!.url : '';
-                        if (imageUrl) {
-                            await messagingClient.sendImageMessage(senderId, imageUrl);
-                        }
-                    } else {
-                        await messagingClient.sendTextMessage(
-                            senderId,
-                            `Received a ${attachment.type} attachment.`
-                        );
-                    }
-                }
-            } else if (message.message?.text) {
-                const text = message.message.text;
-                await messagingClient.sendTextMessage(senderId, `You said: ${text}`);
-            }
         }
 
         return new Response('EVENT_RECEIVED', { status: 200 });
