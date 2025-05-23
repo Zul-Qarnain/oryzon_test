@@ -55,13 +55,14 @@ export async function handleNewMessageFromPlatform(
         if (existingCustomer) {
             customer = existingCustomer;
         } else {
-            customer = await customersService.createCustomer({
-                platformCustomerId: senderPlatformId,
-                channelId: connectedChannelId,
-                fullName: `User ${senderPlatformId}`, // Basic default name
-                // email, phone can be added if available later
-                // firstSeenAt and lastSeenAt are typically handled by the service/DB
-            });
+            //TODO: Uncomment and implement customer creation logic
+            // customer = await customersService.createCustomer({
+            //     platformCustomerId: senderPlatformId,
+            //     channelId: connectedChannelId,
+            //     fullName: `User ${senderPlatformId}`, // Basic default name
+            //     // email, phone can be added if available later
+            //     // firstSeenAt and lastSeenAt are typically handled by the service/DB
+            // });
         }
     } catch (error) {
         console.error(`Error finding or creating customer for senderPlatformId ${senderPlatformId}:`, error);
@@ -99,11 +100,11 @@ export async function handleNewMessageFromPlatform(
                     // (messageContent as any).platformMessageId = platformMessageId; 
                     // Or adjust ChatMessageContent and the Omit in chatsService.
         
-                    await chatsService.handleNewMessage(
-                        messageContent,
-                        internalCustomerId,
-                        connectedChannelId
-                    );
+                    // await chatsService.handleNewMessage(
+                    //     // messageContent,
+                    //     internalCustomerId,
+                    //     connectedChannelId
+                    // );
                 } catch (error) {
                     console.error(`Failed to send image message to ${messageSenderPsid}:`, error);
                 }
@@ -137,11 +138,11 @@ export async function handleNewMessageFromPlatform(
             // (messageContent as any).platformMessageId = platformMessageId; 
             // Or adjust ChatMessageContent and the Omit in chatsService.
 
-            await chatsService.handleNewMessage(
-                messageContent,
-                internalCustomerId,
-                connectedChannelId
-            );
+            // await chatsService.handleNewMessage(
+            //     messageContent,
+            //     internalCustomerId,
+            //     connectedChannelId
+            // );
         } catch (error) {
             console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
             try {

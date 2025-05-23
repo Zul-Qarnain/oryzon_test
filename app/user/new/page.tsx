@@ -27,7 +27,7 @@ const NewProjectPage = () => {
 
   const handleGoogleSignUp = async () => {
     if (!projectName) return;
-    await signUpWithGoogle(projectName);
+    await signUpWithGoogle();
     if (!error_user) { // Check if there was no error during sign-up
       router.push('/');
     }
@@ -35,7 +35,7 @@ const NewProjectPage = () => {
 
   const handleFacebookSignUp = async () => {
     if (!projectName) return;
-    await signUpWithFacebook(projectName);
+    await signUpWithFacebook();
     if (!error_user) { // Check if there was no error during sign-up
       router.push('/');
     }
