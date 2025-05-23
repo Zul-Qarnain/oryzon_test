@@ -162,7 +162,7 @@ const BusinessDetailPageContent: React.FC = () => {
             </div>
           ) : <p className="text-[var(--text-on-dark-muted)]">No products found.</p>,
           true,
-          `/business/${businessId}/product/new`
+          `/business/${businessId}/products/new`
         )}
 
         {renderSection(

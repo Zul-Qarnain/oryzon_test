@@ -57,29 +57,27 @@ const BusinessProductsListPage: React.FC = () => {
               {product.description}
             </p>
           )}
-          <p className="text-sm text-[var(--text-on-dark-muted)] mb-4">
-            Stock: <span className="font-medium text-[var(--text-on-dark-secondary)]">{product.sku ?? 'N/A'}</span>
-          </p>
+          {/* Stock display removed as product.sku was incorrectly used and no direct stock field available */}
         </div>
-      <div className="flex justify-end space-x-2 mt-auto pt-3 border-t border-[var(--border-light)]">
-        {/* Placeholder for future actions like view details or edit */}
-        {/* <button
-            onClick={() => router.push(`/business/${businessId}/product/${product.productId}`)} // Example: view product details
-            className="p-2 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-dark-secondary)] rounded-md transition-colors flex items-center"
-            title="View Product Details"
-        >
-            <Eye size={14} className="mr-1" /> View
-        </button> */}
-        <button
-            onClick={() => router.push(`/business/${businessId}/product/edit/${product.productId}`)} // Example: edit product
-            className="p-2 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-dark-secondary)] rounded-md transition-colors flex items-center"
-            title="Edit Product"
-        >
-            <Edit3 size={14} className="mr-1" /> Edit
-        </button>
+        <div className="flex justify-end space-x-2 mt-auto pt-3 border-t border-[var(--border-light)]">
+          <button
+              onClick={() => router.push(`/business/${businessId}/products/${product.productId}`)}
+              className="p-2 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-dark-secondary)] rounded-md transition-colors flex items-center"
+              title="View Product Details"
+          >
+              <Eye size={14} className="mr-1" /> View
+          </button>
+          <button
+              onClick={() => router.push(`/business/${businessId}/products/${product.productId}/update`)} 
+              className="p-2 text-xs bg-[var(--color-accent-secondary)] hover:bg-opacity-80 text-white rounded-md transition-colors flex items-center"
+              title="Edit Product"
+          >
+              <Edit3 size={14} className="mr-1" /> Edit
+          </button>
+        </div>
       </div>
-    </div>
-  )};
+    );
+  };
 
   if (user_loading || (businessLoading && !business) || (product_loading && products.length === 0 && !error_product && !businessError)) {
     return (
@@ -118,7 +116,7 @@ const BusinessProductsListPage: React.FC = () => {
           <p className="text-[var(--text-on-dark-muted)] mt-1">Manage all your products.</p>
         </div>
         <Link
-          href={`/business/${businessId}/product/new`}
+          href={`/business/${businessId}/products/new`}
           className="mt-4 sm:mt-0 px-5 py-2.5 bg-[var(--color-accent-primary)] text-white font-semibold rounded-lg hover:bg-opacity-80 transition-colors flex items-center justify-center whitespace-nowrap"
         >
           <PlusCircle className="h-5 w-5 mr-2" />
@@ -151,7 +149,7 @@ const BusinessProductsListPage: React.FC = () => {
             Get started by adding your first product.
           </p>
           <Link
-            href={`/business/${businessId}/product/new`}
+            href={`/business/${businessId}/products/new`}
             className="px-6 py-2.5 bg-[var(--color-accent-primary)] text-white font-semibold rounded-md hover:bg-opacity-80 transition-colors inline-flex items-center"
           >
             <PlusCircle className="h-5 w-5 mr-2" />

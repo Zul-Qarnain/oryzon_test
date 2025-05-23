@@ -68,7 +68,7 @@ export default function BusinessDetailLayout({
     { id: 'info', label: 'Information', icon: LayoutDashboard, href: `/business/${businessId}`, isPageLink: true, exactMatch: true },
     { id: 'channels', label: 'Channels', icon: RadioTower, href: `/business/${businessId}/channels`, isPageLink: true },
     { id: 'products-overview', label: 'Products', icon: Package, href: `/business/${businessId}/products`, isPageLink: true },
-    { id: 'new-product', label: 'Add Product', icon: PlusCircle, href: `/business/${businessId}/product/new`, isPageLink: true, parentSectionId: 'products-overview' },
+    { id: 'new-product', label: 'Add Product', icon: PlusCircle, href: `/business/${businessId}/products/new`, isPageLink: true, parentSectionId: 'products-overview' },
     { id: 'customers', label: 'Customers', icon: Users, href: `/business/${businessId}#customers`, isPageLink: false, parentPagePath: `/business/${businessId}` }, 
     { id: 'orders', label: 'Orders', icon: ShoppingCart, href: `/business/${businessId}#orders`, isPageLink: false, parentPagePath: `/business/${businessId}` }, 
     { id: 'settings', label: 'Settings', icon: Settings, href: `/business/${businessId}/settings`, isPageLink: true },
@@ -219,7 +219,7 @@ export default function BusinessDetailLayout({
                          ${businessId ? (isMobileSidebarOpen && 'md:ml-0') || (!isMobileSidebarOpen && 'md:ml-64') : 'ml-0'}`}>
            {showAddProductButtonInMain && (
             <div className="mb-4 flex justify-end">
-              <Link href={`/business/${businessId}/product/new`} className="bg-[var(--color-accent-primary)] text-white px-4 py-2 rounded-md hover:bg-opacity-80 transition-colors flex items-center">
+              <Link href={`/business/${businessId}/products/new`} className="bg-[var(--color-accent-primary)] text-white px-4 py-2 rounded-md hover:bg-opacity-80 transition-colors flex items-center">
                 <PlusCircle size={18} className="mr-2" />
                 Add New Product
               </Link>
