@@ -169,61 +169,10 @@ export class ChatsService {
 
   async handleNewMessage(
     messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId'| 'timestamp'|"platformMessageId">,
-    customerId: string,
-    channelId: string // Renamed from connectedPageID for clarity
+    chatId: string,
   ): Promise<(typeof messages.$inferSelect)[]> {
-    // 1. Find the chat or determine businessId and providerUserId for new chat
-    const foundChat = await db.query.chats.findFirst({ // Changed let to const
-      where: and(
-        eq(chats.customerId, customerId),
-        eq(chats.channelId, channelId),
-      ),
-    });
-
-    let chatId: string;
-    let businessIdToUse: string;
-    let providerUserIdToUse: string | null = null;
-
-    if (!foundChat) {
-      // Need to get businessId and providerUserId for the new chat.
-      // Typically, channelId would belong to a business.
-      const channelDetails = await db.query.connectedChannels.findFirst({
-        where: eq(connectedChannels.channelId, channelId),
-        columns: {
-          businessId: true,
-          providerUserId: true, // This is the providerUserId associated with the channel (e.g. user who connected it)
-        }
-      });
-
-      if (!channelDetails) {
-        console.error(`Channel with ID ${channelId} not found. Cannot create chat.`);
-        // Or throw an error / return an empty array or error indicator
-        return []; 
-      }
-      businessIdToUse = channelDetails.businessId;
-      
-      // For the chat's providerUserId, we might want to use the customer's providerUserId if available,
-      // or the channel's, or leave it null. Let's assume we try to get it from the customer first.
-      const customerDetails = await db.query.customers.findFirst({
-        where: eq(customers.customerId, customerId),
-        columns: { providerUserId: true }
-      });
-      providerUserIdToUse = customerDetails?.providerUserId || channelDetails.providerUserId || null;
-
-
-      // If chat not found, create a new one
-      const newChatData: CreateChatData = {
-        businessId: businessIdToUse,
-        customerId: customerId,
-        channelId: channelId,
-        providerUserId: providerUserIdToUse,
-        // status will default to 'OPEN' as per createChat method
-      };
-      const newChat = await this.createChat(newChatData);
-      chatId = newChat.chatId;
-    } else {
-      chatId = foundChat.chatId;
-    }
+    // 1. Find the chat or determine businessId and provi...0
+   
 
     // 2. Create a new message entity
     // Assuming senderType is 'CUSTOMER' and contentType is 'TEXT' for new messages via this handler

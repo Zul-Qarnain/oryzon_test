@@ -109,6 +109,10 @@ export class ChannelsService {
         customers: options?.include?.customers 
           ? { 
               limit: typeof options.include.customers === 'boolean' ? undefined : options.include.customers.limit,
+              where: typeof options.include.customers === 'boolean' ? undefined : 
+                options.include.customers.platformCustomerId ? 
+                  eq(customers.platformCustomerId, options.include.customers.platformCustomerId) : 
+                  undefined,
             } 
           : undefined,
         orders: options?.include?.orders 
@@ -119,6 +123,10 @@ export class ChannelsService {
         chats: options?.include?.chats 
           ? { 
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
+              where: typeof options.include.chats === 'boolean' ? undefined : 
+                options.include.chats.customerId ? 
+                  eq(chats.customerId, options.include.chats.customerId) : 
+                  undefined,
             } 
           : undefined,
         // products: relation not directly on connectedChannels in schema

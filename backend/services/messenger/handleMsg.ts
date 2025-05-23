@@ -5,16 +5,9 @@ import { chatsService } from '../chats/chats.service';
 import { FacebookMessageParser, FacebookMessagePayloadMessagingEntry as FacebookMessageObject, FacebookMessagingAPIClient } from 'fb-messenger-bot-api';
 import { Customer } from '../customers/customers.types';
 import { ConnectedChannelWithIncludes } from '../channels/channels.types';
+import { messages } from '@/db/schema';
+import { Chat } from '../chats/chats.types';
 
-// Define the structure for message content for chatsService.handleNewMessage
-// This should align with the Omit<> type in chatsService.handleNewMessage signature
-type ChatMessageContent = {
-    content: string;
-    senderType: 'CUSTOMER' | 'AGENT' | 'BOT'; // Or your specific enum values
-    contentType: 'TEXT' | 'IMAGE' | 'VIDEO'; // Or your specific enum values
-    // platformMessageId is omitted as per chatsService.handleNewMessage signature
-    // direction?: 'INBOUND' | 'OUTBOUND'; // If your schema supports it and it's not omitted
-};
 
 
 export async function handleNewMessageFromPlatform(
@@ -28,6 +21,16 @@ export async function handleNewMessageFromPlatform(
     try {
         const { data } = await channelsService.getAllChannels({
             filter: { platformSpecificId: recipientPageId },
+            include: {
+                business: true, customers: {
+                    limit: 1,
+                    platformCustomerId: senderPlatformId,
+                },
+                chats: {
+                    limit: 1,
+                    customerId: senderPlatformId,
+                }
+            },
             limit: 1,
         });
         channel = data[0];
@@ -45,34 +48,40 @@ export async function handleNewMessageFromPlatform(
 
     // 2. Find or create Customer using senderPlatformId
 
-    let customer: Customer | null = null;
-    try {
-        const { data: [existingCustomer] } = await customersService.getAllCustomers({
-            filter: { platformCustomerId: senderPlatformId, channelId: connectedChannelId },
-            limit: 1,
-        });
-
-        if (existingCustomer) {
-            customer = existingCustomer;
-        } else {
-            //TODO: Uncomment and implement customer creation logic
-            // customer = await customersService.createCustomer({
-            //     platformCustomerId: senderPlatformId,
-            //     channelId: connectedChannelId,
-            //     fullName: `User ${senderPlatformId}`, // Basic default name
-            //     // email, phone can be added if available later
-            //     // firstSeenAt and lastSeenAt are typically handled by the service/DB
-            // });
-        }
-    } catch (error) {
-        console.error(`Error finding or creating customer for senderPlatformId ${senderPlatformId}:`, error);
-        return;
-    }
+    let customer: Customer | null = channel.customers?.[0] || null;
+    let chat:Chat | null = channel.chats?.[0] || null;
 
     if (!customer) {
-        console.error(`Failed to find or create customer for senderPlatformId: ${senderPlatformId}`);
-        return;
+        try {
+            // DO: Uncomment and implement customer creation logic
+            customer = await customersService.createCustomer({
+                platformCustomerId: senderPlatformId,
+                channelId: connectedChannelId,
+                fullName: `User ${senderPlatformId}`,
+                businessId: channel.business!.businessId,
+            });
+        } catch (error) {
+            console.error(`Error finding or creating customer for senderPlatformId ${senderPlatformId}:`, error);
+            return;
+        }
+
     }
+
+    if(!chat) {
+        try {
+            chat = await chatsService.createChat({
+                customerId: customer.customerId,
+                channelId: connectedChannelId,
+                businessId: channel.business!.businessId,
+                providerUserId: channel.providerUserId,
+                status: 'OPEN', // Default status
+            });
+        } catch (error) {
+            console.error(`Error creating chat for customer ${customer.customerId}:`, error);
+            return;
+        }
+    }
+
     const internalCustomerId = customer.customerId;
 
     // 3. Initialize Messaging Client
@@ -85,26 +94,19 @@ export async function handleNewMessageFromPlatform(
     if (fbMessage.message?.attachments) {
         for (const attachment of fbMessage.message.attachments) {
             if (attachment.type === 'image' && attachment.payload && 'url' in attachment.payload) {
-                const imageUrl = attachment.payload.url;
+                const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+                    content: attachment.payload.url,
+                    senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
+                    contentType: 'IMAGE',
+                    // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
+                };
 
                 try {
-                    //handleImageMessage
-                    const messageContent: ChatMessageContent = {
-                        content: imageUrl,
-                        senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
-                        contentType: 'IMAGE',
-                        // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
-                    };
-        
-                    // If your chatsService.handleNewMessage was updated to accept platformMessageId in its first argument:
-                    // (messageContent as any).platformMessageId = platformMessageId; 
-                    // Or adjust ChatMessageContent and the Omit in chatsService.
-        
-                    // await chatsService.handleNewMessage(
-                    //     // messageContent,
-                    //     internalCustomerId,
-                    //     connectedChannelId
-                    // );
+
+                    await chatsService.handleNewMessage(
+                        messageContent,
+                        chat.chatId,
+                    );
                 } catch (error) {
                     console.error(`Failed to send image message to ${messageSenderPsid}:`, error);
                 }
@@ -127,22 +129,15 @@ export async function handleNewMessageFromPlatform(
         const platformMessageId = fbMessage.message.mid; // Facebook's message ID
 
         try {
-            const messageContent: ChatMessageContent = {
+            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
                 content: text,
                 senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
                 contentType: 'TEXT',
-                // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
             };
-
-            // If your chatsService.handleNewMessage was updated to accept platformMessageId in its first argument:
-            // (messageContent as any).platformMessageId = platformMessageId; 
-            // Or adjust ChatMessageContent and the Omit in chatsService.
-
-            // await chatsService.handleNewMessage(
-            //     messageContent,
-            //     internalCustomerId,
-            //     connectedChannelId
-            // );
+            await chatsService.handleNewMessage(
+                messageContent,
+                chat.chatId,
+            );
         } catch (error) {
             console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
             try {
@@ -163,4 +158,5 @@ export async function handleNewMessageFromPlatform(
         }
     }
 }
+
 
