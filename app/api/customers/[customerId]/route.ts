@@ -13,8 +13,9 @@ const VALID_CUSTOMER_INCLUDES: (keyof CustomerIncludeOptions)[] = [
 
 export async function GET(
   request: Request,
-  { params }: { params: { customerId: string } }
+  context: { params: Promise<{ customerId: string }> }
 ) {
+  const params = await context.params;
   const { customerId } = params;
 
   if (!customerId) {

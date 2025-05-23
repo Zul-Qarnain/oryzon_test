@@ -98,8 +98,7 @@ export const orders = pgTable('orders', {
   orderStatus: orderStatusEnum('order_status').default('PENDING').notNull(),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
-  shippingAddress: jsonb('shipping_address'),
-  billingAddress: jsonb('billing_address'),
+  shippingAddress: text('shipping_address').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

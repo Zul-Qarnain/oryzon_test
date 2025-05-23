@@ -21,10 +21,10 @@ function isPlatformType(value: string): value is PlatformType {
 
 export async function GET(
   request: Request,
-  { params }: { params: { channelId: string } }
+  context: { params: Promise<{ channelId: string }> }
 ) {
+  const params = await context.params;
   const { channelId } = params;
-
   if (!channelId) {
     return new Response(JSON.stringify({ message: 'Channel ID is required' }), { status: 400 });
   }

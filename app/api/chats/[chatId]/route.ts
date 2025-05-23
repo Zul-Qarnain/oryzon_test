@@ -20,8 +20,9 @@ function isChatStatus(value: string): value is ChatStatus {
 
 export async function GET(
   request: Request,
-  { params }: { params: { chatId: string } }
+  context: { params: Promise<{ chatId: string }> }
 ) {
+  const params = await context.params;
   const { chatId } = params;
 
   if (!chatId) {

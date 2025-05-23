@@ -53,7 +53,7 @@ export type CreateOrderData = Omit<NewOrder, 'orderId' | 'createdAt' | 'updatedA
 
 // Data for updating an existing Order
 // businessId, customerId, channelId should generally not be updatable.
-export type UpdateOrderData = Partial<Pick<NewOrder, 'orderStatus' | 'shippingAddress' | 'billingAddress' | 'providerUserId'>>;
+export type UpdateOrderData = Partial<Pick<NewOrder, 'orderStatus' | 'shippingAddress'  | 'providerUserId'|"totalAmount">>;
 
 // Data for updating many Orders
 export interface UpdateManyOrdersData {

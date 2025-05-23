@@ -32,7 +32,6 @@ export class OrdersService {
           totalAmount: data.totalAmount,
           currency: data.currency,
           shippingAddress: data.shippingAddress,
-          billingAddress: data.billingAddress,
         })
         .returning();
 
