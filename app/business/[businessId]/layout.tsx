@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Header from '@/app/components/Header';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
-import { Loader2, Settings, Package, RadioTower, LayoutDashboard, Users, ShoppingCart, Briefcase } from 'lucide-react';
+import { Loader2, Settings, Package, RadioTower, LayoutDashboard, Users, ShoppingCart, Briefcase, PlusCircle } from 'lucide-react';
 
 // SidebarLink component definition
 const SidebarLink = ({ 
@@ -52,96 +52,100 @@ export default function BusinessDetailLayout({
   const businessId = params.businessId as string;
 
   const { business, fetchBusiness, businessLoading, businessError } = useBusinessContext();
-  const { user, user_loading } = useUserContext();
+  const { user, user_loading, FUser } = useUserContext(); // FUser for checking auth
 
-  const [activeSectionId, setActiveSectionId] = useState('info'); // Stores the ID of the active section
+  const [activeSectionId, setActiveSectionId] = useState('info'); 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (businessId && user && (!business || business.businessId !== businessId)) { 
+    if (businessId && FUser && (!business || business.businessId !== businessId)) { 
       fetchBusiness(businessId, { include: 'user' }); 
     }
-  }, [businessId, user, fetchBusiness, business]);
+  }, [businessId, FUser, fetchBusiness, business]);
 
   // Define sidebar items with unique IDs and correct hrefs
-  const sidebarItems = [
+  const sidebarItems = React.useMemo(() => [
     { id: 'info', label: 'Information', icon: LayoutDashboard, href: `/business/${businessId}`, isPageLink: true, exactMatch: true },
     { id: 'channels', label: 'Channels', icon: RadioTower, href: `/business/${businessId}/channels`, isPageLink: true },
-    { id: 'products', label: 'Products', icon: Package, href: `#products`, isPageLink: false, parentPagePath: `/business/${businessId}` },
-    { id: 'customers', label: 'Customers', icon: Users, href: `#customers`, isPageLink: false, parentPagePath: `/business/${businessId}` },
-    { id: 'orders', label: 'Orders', icon: ShoppingCart, href: `#orders`, isPageLink: false, parentPagePath: `/business/${businessId}` },
+    { id: 'products-overview', label: 'Products', icon: Package, href: `/business/${businessId}/products`, isPageLink: true },
+    { id: 'new-product', label: 'Add Product', icon: PlusCircle, href: `/business/${businessId}/product/new`, isPageLink: true, parentSectionId: 'products-overview' },
+    { id: 'customers', label: 'Customers', icon: Users, href: `/business/${businessId}#customers`, isPageLink: false, parentPagePath: `/business/${businessId}` }, 
+    { id: 'orders', label: 'Orders', icon: ShoppingCart, href: `/business/${businessId}#orders`, isPageLink: false, parentPagePath: `/business/${businessId}` }, 
     { id: 'settings', label: 'Settings', icon: Settings, href: `/business/${businessId}/settings`, isPageLink: true },
-  ];
+  ], [businessId]);
   
-  // Determine active section based on pathname and hash
   useEffect(() => {
     const currentPath = pathname;
-    const currentHash = typeof window !== 'undefined' ? window.location.hash : ''; // Keep the '#' for hash links
+    const currentHash = typeof window !== 'undefined' ? window.location.hash : '';
 
     let newActiveId = 'info'; // Default
 
-    for (const item of sidebarItems) {
+    // Iterate in reverse to prioritize more specific paths if they share prefixes
+    const reversedSidebarItems = [...sidebarItems].reverse();
+
+    for (const item of reversedSidebarItems) {
       if (item.isPageLink) {
-        // For page links, check if the current path starts with the item's href.
-        // More specific paths (like /channel/new under /channels) should match their parent.
-        if (item.exactMatch) { // For the main business page /business/[id]
-            if (currentPath === item.href && (!currentHash || currentHash === "#")) {
+        if (item.exactMatch) {
+            if (currentPath === item.href && (!currentHash || currentHash === "#" || (item.id === 'info' && currentHash === '#info'))) {
                 newActiveId = item.id;
-                break;
+                break; 
             }
         } else if (currentPath.startsWith(item.href)) {
           newActiveId = item.id;
-          // Don't break immediately, allow more specific matches like 'settings' over 'business/[id]' if both start similarly
+          // If this item has a parentSectionId, we want the parent to be active.
+          if (item.parentSectionId) {
+            newActiveId = item.parentSectionId;
+          }
+          break; // Found the most specific match or its parent
         }
-      } else {
-        // For hash links, check if on the correct parent page and the hash matches.
+      } else { // Hash links
         if (currentPath === item.parentPagePath && currentHash === item.href) {
           newActiveId = item.id;
           break;
         }
       }
     }
-    // If after checking page links, we are on the main business page and have a hash, prioritize hash links
-    if (currentPath === `/business/${businessId}` && currentHash) {
-        const hashItem = sidebarItems.find(item => !item.isPageLink && item.href === currentHash);
+    
+    // Fallback for main business page with hash, if not caught by specific page links
+    if (newActiveId === 'info' && currentPath === `/business/${businessId}` && currentHash && currentHash !== "#" && currentHash !== "#info") {
+        const hashItem = sidebarItems.find(item => !item.isPageLink && item.href === currentHash && item.parentPagePath === `/business/${businessId}`);
         if (hashItem) {
             newActiveId = hashItem.id;
-        } else if (!currentHash || currentHash === "#" || currentHash === "#info"){ // if hash is empty or #info, set to info
-            newActiveId = 'info';
         }
-    } else if (currentPath === `/business/${businessId}` && (!currentHash || currentHash === "#")) { // Default to 'info' if on main page without specific hash
+    } else if (currentPath === `/business/${businessId}` && (!currentHash || currentHash === "#" || currentHash === "#info")) {
+        // Ensure 'info' is selected for the base business page or with #info hash
         newActiveId = 'info';
     }
 
 
     setActiveSectionId(newActiveId);
 
-  }, [pathname, businessId, sidebarItems]); // sidebarItems is stable, but good practice to include if it could change
+  }, [pathname, businessId, sidebarItems]);
 
-  // Handle hash changes for the main business page to update active section
   useEffect(() => {
     const handleHashChange = () => {
       const currentHash = window.location.hash;
-      if (pathname === `/business/${businessId}`) {
-        const hashItem = sidebarItems.find(item => !item.isPageLink && item.href === currentHash);
+      if (pathname === `/business/${businessId}`) { // Only apply hash logic if on the main business page
+        const hashItem = sidebarItems.find(item => !item.isPageLink && item.href === currentHash && item.parentPagePath === `/business/${businessId}`);
         if (hashItem) {
           setActiveSectionId(hashItem.id);
-        } else if (!currentHash || currentHash === "#" || currentHash === "#info") { // Default to 'info' if hash is empty or #info
+        } else if (!currentHash || currentHash === "#" || currentHash === "#info") {
           setActiveSectionId('info');
         }
+        // If hash changes to something not in sidebar (e.g. custom scroll), 'info' might be a fallback or keep current page link active.
+        // The main useEffect handles page links, this one fine-tunes for hashes on the main page.
       }
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('hashchange', handleHashChange);
-      // Initial check on load if there's a hash
+      // Initial check on load if there's a hash on the main business page
       if (pathname === `/business/${businessId}` && window.location.hash) {
         handleHashChange();
       }
       return () => window.removeEventListener('hashchange', handleHashChange);
     }
   }, [pathname, businessId, sidebarItems]);
-
 
   if (user_loading || (businessLoading && !business && businessId)) {
     return (
@@ -152,7 +156,7 @@ export default function BusinessDetailLayout({
     );
   }
 
-  if (!user && !user_loading) {
+  if (!FUser && !user_loading) { // Check FUser for authentication
     router.push('/user/signIn'); 
     return null;
   }
@@ -172,6 +176,10 @@ export default function BusinessDetailLayout({
       </div>
     );
   }
+
+  // Determine if the "Add Product" button should be shown in the main content area
+  // Show if on the products overview page.
+  const showAddProductButtonInMain = activeSectionId === 'products-overview' && pathname === `/business/${businessId}/products`;
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)]">
@@ -195,15 +203,13 @@ export default function BusinessDetailLayout({
               <SidebarLink 
                 key={item.id} 
                 id={item.id}
-                // For page links, href is the full path. For hash links, it's just the hash.
                 href={item.isPageLink ? item.href : (item.parentPagePath ? `${item.parentPagePath}${item.href}`: item.href)}
                 icon={item.icon} 
                 label={item.label} 
-                activeSectionId={activeSectionId}
+                activeSectionId={activeSectionId} // This will be 'products-overview' when on new product page
                 isPageLink={item.isPageLink}
                 onClick={() => {
                   if (isMobileSidebarOpen) setIsMobileSidebarOpen(false);
-                  // Active section ID is updated by useEffect watching pathname/hash
                 }}
               />
             ))}
@@ -211,6 +217,14 @@ export default function BusinessDetailLayout({
         )}
         <main className={`flex-1 p-4 md:p-8 overflow-y-auto transition-all duration-300 ease-in-out 
                          ${businessId ? (isMobileSidebarOpen && 'md:ml-0') || (!isMobileSidebarOpen && 'md:ml-64') : 'ml-0'}`}>
+           {showAddProductButtonInMain && (
+            <div className="mb-4 flex justify-end">
+              <Link href={`/business/${businessId}/product/new`} className="bg-[var(--color-accent-primary)] text-white px-4 py-2 rounded-md hover:bg-opacity-80 transition-colors flex items-center">
+                <PlusCircle size={18} className="mr-2" />
+                Add New Product
+              </Link>
+            </div>
+          )}
           {children}
         </main>
       </div>
