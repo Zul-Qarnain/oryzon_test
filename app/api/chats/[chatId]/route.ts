@@ -49,10 +49,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { chatId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ chatId: string }> }) {
+  const params = await props.params;
   const { chatId } = params;
 
   if (!chatId) {
@@ -74,10 +72,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { chatId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ chatId: string }> }) {
+  const params = await props.params;
   const { chatId } = params;
 
   if (!chatId) {

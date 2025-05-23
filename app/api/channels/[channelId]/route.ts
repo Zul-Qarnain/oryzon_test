@@ -49,10 +49,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { channelId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ channelId: string }> }) {
+  const params = await props.params;
   const { channelId } = params;
 
   if (!channelId) {
@@ -74,10 +72,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { channelId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ channelId: string }> }) {
+  const params = await props.params;
   const { channelId } = params;
 
   if (!channelId) {

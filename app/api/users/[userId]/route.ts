@@ -10,10 +10,8 @@ const VALID_USER_INCLUDES: (keyof UserIncludeOptions)[] = [
   // 'orders',
 ];
 
-export async function GET(
-  request: Request,
-  { params }: { params: { userId: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const { userId } = params;
 
   if (!userId) {
@@ -40,10 +38,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { userId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const { userId } = params;
 
   if (!userId) {
@@ -65,10 +61,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { userId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const { userId } = params;
 
   if (!userId) {

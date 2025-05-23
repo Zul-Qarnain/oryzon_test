@@ -42,10 +42,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { customerId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ customerId: string }> }) {
+  const params = await props.params;
   const { customerId } = params;
 
   if (!customerId) {
@@ -67,10 +65,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { customerId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ customerId: string }> }) {
+  const params = await props.params;
   const { customerId } = params;
 
   if (!customerId) {

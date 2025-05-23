@@ -10,10 +10,8 @@ const VALID_PRODUCT_INCLUDES: (keyof ProductIncludeOptions)[] = [
   // 'user' and 'connectedChannel' are removed as direct relations for include
 ];
 
-export async function GET(
-  request: Request,
-  { params }: { params: { productId: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ productId: string }> }) {
+  const params = await props.params;
   const { productId } = params;
 
   if (!productId) {
@@ -40,10 +38,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { productId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ productId: string }> }) {
+  const params = await props.params;
   const { productId } = params;
 
   if (!productId) {
@@ -65,10 +61,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { productId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ productId: string }> }) {
+  const params = await props.params;
   const { productId } = params;
 
   if (!productId) {

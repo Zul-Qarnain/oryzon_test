@@ -12,10 +12,8 @@ const VALID_ORDER_INCLUDES: (keyof OrderIncludeOptions)[] = [
   // 'user' (direct business user link) is removed
 ];
 
-export async function GET(
-  request: Request,
-  { params }: { params: { orderId: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ orderId: string }> }) {
+  const params = await props.params;
   const { orderId } = params;
 
   if (!orderId) {
@@ -42,10 +40,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { orderId: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ orderId: string }> }) {
+  const params = await props.params;
   const { orderId } = params;
 
   if (!orderId) {
@@ -67,10 +63,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { orderId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ orderId: string }> }) {
+  const params = await props.params;
   const { orderId } = params;
 
   if (!orderId) {
