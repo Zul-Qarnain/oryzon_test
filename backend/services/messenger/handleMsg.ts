@@ -29,7 +29,7 @@ export async function handleNewMessageFromPlatform(
                 },
                 chats: {
                     limit: 1,
-                    customerId: senderPlatformId,
+                    platformCustomerId: senderPlatformId,
                 }
             },
             limit: 1,
@@ -71,7 +71,7 @@ export async function handleNewMessageFromPlatform(
     if(!chat) {
         try {
             chat = await chatsService.createChat({
-                customerId: customer.customerId,
+                platformCustomerId: senderPlatformId,
                 channelId: connectedChannelId,
                 businessId: channel.business!.businessId,
                 providerUserId: channel.providerUserId,

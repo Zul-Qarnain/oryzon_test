@@ -28,14 +28,14 @@ export interface GetChatByIdOptions {
 export interface GetAllChatsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'customerId' | 'channelId' | 'status'>>;
+  filter?: Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status'>>;
   include?: ChatIncludeOptions;
 }
 
 // Data for creating a new Chat
-export type CreateChatData = Omit<NewChat, 'chatId' | 'startedAt' | 'lastMessageAt' | 'providerUserId'> & {
+export type CreateChatData = Omit<NewChat, 'chatId' | 'startedAt' | 'lastMessageAt' | 'providerUserId' | 'customerId'> & { // customerId removed as it's not in NewChat anymore
   businessId: Business['businessId'];
-  customerId: Customer['customerId'];
+  platformCustomerId: Customer['platformCustomerId']; // Changed from customerId
   channelId: ConnectedChannel['channelId'];
   providerUserId?: User['providerUserId'] | null; // Optional, as it's nullable and denormalized
 };
@@ -55,7 +55,7 @@ export interface ChatFilterOptions {
   ids?: Chat['chatId'][];
   businessId?: Business['businessId'];
   providerUserId?: User['providerUserId'] | null;
-  customerId?: Customer['customerId'];
+  platformCustomerId?: Customer['platformCustomerId']; // Changed from customerId
   channelId?: ConnectedChannel['channelId'];
   status?: Chat['status'];
   startedAtBefore?: Date;

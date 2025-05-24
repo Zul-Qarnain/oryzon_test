@@ -17,7 +17,7 @@ export interface ChannelIncludeOptions {
   userViaProviderId?: boolean; // For the denormalized user link
   customers?: { limit?: number; offset?: number , platformCustomerId?: Customer['platformCustomerId']} | boolean;
   orders?: { limit?: number; offset?: number } | boolean;
-  chats?: { limit?: number; offset?: number , customerId?: Customer["customerId"]} | boolean;
+  chats?: { limit?: number; offset?: number , platformCustomerId?: Customer["customerId"]} | boolean;
   products?: { limit?: number; offset?: number } | boolean;
 }
 

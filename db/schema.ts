@@ -9,6 +9,7 @@ import {
   decimal,
   jsonb,
   pgEnum,
+  unique, // Added unique
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -70,7 +71,11 @@ export const customers = pgTable('customers', {
   profilePictureUrl: text('profile_picture_url'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  uniqueConstraints: {
+    platformUniqueConstraint: unique('customer_platform_idx').on(table.businessId, table.channelId, table.platformCustomerId),
+  }
+}));
 
 export const products = pgTable('products', {
   productId: uuid('product_id').primaryKey().defaultRandom(),
@@ -115,13 +120,13 @@ export const orderItems = pgTable('order_items', {
 export const chats = pgTable('chats', {
   chatId: uuid('chat_id').primaryKey().defaultRandom(),
   businessId: uuid('business_id').notNull().references(() => businesses.businessId), // Added businessId
-  customerId: uuid('customer_id').notNull().references(() => customers.customerId),
+  platformCustomerId: text('platform_customer_id').notNull(), // Changed from customerId
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
   status: chatStatusEnum('status').default('OPEN').notNull(), // Added .notNull()
-});
+}); // Removed explicit foreignKey block
 
 export const messages = pgTable('messages', {
   messageId: uuid('message_id').primaryKey().defaultRandom(),
@@ -244,8 +249,8 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     references: [businesses.businessId],
   }),
   customer: one(customers, {
-    fields: [chats.customerId],
-    references: [customers.customerId],
+    fields: [chats.businessId, chats.channelId, chats.platformCustomerId],
+    references: [customers.businessId, customers.channelId, customers.platformCustomerId],
   }),
   connectedChannel: one(connectedChannels, {
     fields: [chats.channelId],

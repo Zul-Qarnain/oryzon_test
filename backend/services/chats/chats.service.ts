@@ -21,7 +21,7 @@ export class ChatsService {
       .insert(chats)
       .values({
         businessId: data.businessId,
-        customerId: data.customerId,
+        platformCustomerId: data.platformCustomerId, // Changed from customerId
         channelId: data.channelId,
         providerUserId: data.providerUserId, // Will be null if not provided
         status: data.status || 'OPEN', // Default status
@@ -64,7 +64,7 @@ export class ChatsService {
     const page = options?.limit ?? 10;
     const offset = options?.offset ?? 0;
 
-    const filter = options?.filter; // Type is Partial<Pick<Chat, 'businessId' | ...>>
+    const filter = options?.filter; // Type is Partial<Pick<Chat, 'businessId' | 'platformCustomerId' | ...>>
     const conditions = [];
 
     if (filter?.businessId) { // Added businessId filter
@@ -73,8 +73,8 @@ export class ChatsService {
     if (filter?.providerUserId) { // Added providerUserId filter
       conditions.push(eq(chats.providerUserId, filter.providerUserId));
     }
-    if (filter?.customerId) {
-      conditions.push(eq(chats.customerId, filter.customerId));
+    if (filter?.platformCustomerId) { // Changed from customerId
+      conditions.push(eq(chats.platformCustomerId, filter.platformCustomerId));
     }
     if (filter?.channelId) {
       conditions.push(eq(chats.channelId, filter.channelId));

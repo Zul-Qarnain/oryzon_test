@@ -124,8 +124,8 @@ export class ChannelsService {
           ? { 
               limit: typeof options.include.chats === 'boolean' ? undefined : options.include.chats.limit,
               where: typeof options.include.chats === 'boolean' ? undefined : 
-                options.include.chats.customerId ? 
-                  eq(chats.providerUserId, options.include.chats.customerId) : 
+                options.include.chats.platformCustomerId ? 
+                  eq(chats.platformCustomerId, options.include.chats.platformCustomerId) : 
                   undefined,
             } 
           : undefined,

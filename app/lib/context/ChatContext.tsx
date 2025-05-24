@@ -17,7 +17,7 @@ export interface ChatContextType {
   error_chat: string | null;
   fetchChat: (chatId: string, options?: { include?: string }) => Promise<ApiResponse<ChatWithIncludes>>;
   fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>>;
-  createChat: (data: Omit<CreateChatData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; }) => Promise<ApiResponse<ChatWithIncludes>>; // Updated createChat data type
+  createChat: (data: Omit<CreateChatData, 'providerUserId' | 'customerId'> & { businessId: string; platformCustomerId: string; channelId: string; }) => Promise<ApiResponse<ChatWithIncludes>>; // Updated createChat data type
   updateChat: (chatId: string, data: UpdateChatData) => Promise<ApiResponse<ChatWithIncludes>>; // Updated updateChat data type
   deleteChat: (chatId: string) => Promise<ApiResponse<null>>;
   cleanError_Chat: () => void;
@@ -84,12 +84,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const createChat = useCallback(
-    async (data: Omit<CreateChatData, 'providerUserId'> & { businessId: string; customerId: string; channelId: string; }): Promise<ApiResponse<ChatWithIncludes>> => {
+    async (data: Omit<CreateChatData, 'providerUserId' | 'customerId'> & { businessId: string; platformCustomerId: string; channelId: string; }): Promise<ApiResponse<ChatWithIncludes>> => {
       setChatLoading(true);
       setErrorChat(null);
 
-      if (!data.businessId || !data.customerId || !data.channelId) {
-        const errorMsg = "businessId, customerId, and channelId are required.";
+      if (!data.businessId || !data.platformCustomerId || !data.channelId) { // Changed from customerId
+        const errorMsg = "businessId, platformCustomerId, and channelId are required."; // Changed from customerId
         setErrorChat(errorMsg);
         setChatLoading(false);
         return { error: errorMsg, result: null, statusCode: 400 };

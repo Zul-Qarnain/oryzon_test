@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     const businessId = getStringFilterParam(searchParams, 'businessId'); // New filter
     const providerUserId = getStringFilterParam(searchParams, 'providerUserId'); // New filter
-    const customerId = getStringFilterParam(searchParams, 'customerId');
+    const platformCustomerId = getStringFilterParam(searchParams, 'platformCustomerId'); // Changed from customerId
     const channelId = getStringFilterParam(searchParams, 'channelId');
     const status = getStringFilterParam(searchParams, 'status');
 
@@ -41,12 +41,12 @@ export async function GET(request: Request) {
       include: includeOptions,
       limit,
       offset,
-      filter: {} as Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'customerId' | 'channelId' | 'status'>>, // Initialize filter
+      filter: {} as Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status'>>, // Initialize filter
     };
 
     if (businessId) options.filter!.businessId = businessId;
     if (providerUserId) options.filter!.providerUserId = providerUserId;
-    if (customerId) options.filter!.customerId = customerId;
+    if (platformCustomerId) options.filter!.platformCustomerId = platformCustomerId; // Changed from customerId
     if (channelId) options.filter!.channelId = channelId;
     if (status && isChatStatus(status)) options.filter!.status = status;
 
@@ -63,9 +63,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as CreateChatData;
     // TODO: Add validation for body (e.g. with Zod)
-    // Ensure businessId, customerId, and channelId are provided
-    if (!body.businessId || !body.customerId || !body.channelId) {
-      return new Response(JSON.stringify({ message: 'businessId, customerId, and channelId are required' }), { status: 400 });
+    // Ensure businessId, platformCustomerId, and channelId are provided
+    if (!body.businessId || !body.platformCustomerId || !body.channelId) { // Changed from customerId
+      return new Response(JSON.stringify({ message: 'businessId, platformCustomerId, and channelId are required' }), { status: 400 });
     }
     // providerUserId is optional
 
