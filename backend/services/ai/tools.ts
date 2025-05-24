@@ -118,17 +118,25 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
   // --- Tool Implementations ---
   const getProductByIdExecute = async ({ shortId }: z.infer<typeof getProductByIdSchema>) => {
-    console.log(`getProductById is being called with params: ${JSON.stringify({ shortId })}`);
-    const productsResult = await productsService.getAllProducts({
-      filter: { shortId, businessId },
-      limit: 1,
-      include: {}
-    });
-    const product = productsResult.data[0];
-    if (!product) {
-      return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
+    console.log(`getProductById is being called with params: ${JSON.stringify({ shortId })} and businessId: ${businessId}`);
+    try {
+      const productsResult = await productsService.getAllProducts({
+        filter: { shortId:shortId, businessId:businessId },
+        limit: 1,
+        include: {}
+      });
+      console.log(`Products found: ${JSON.stringify(productsResult)}`);
+      const product = productsResult.data[0];
+      if (!product) {
+        return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
+      }
+      return JSON.stringify(product, null, 2); // Return product details as a formatted string
+    } catch (error) {
+      console.error(`Error fetching product by ID ${shortId}:`, error);
+      return formatObjectToString({
+        error: `Could not retrieve product: ${(error as Error).message}`
+      }, 'Product Information');
     }
-    return JSON.stringify(product, null, 2); // Return product details as a formatted string
   };
 
   const calculatorExecute = async ({ expression }: z.infer<typeof calculatorSchema>) => {
