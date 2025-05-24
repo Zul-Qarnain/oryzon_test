@@ -149,8 +149,9 @@ export async function handleNewMessageFromPlatform(
             if (AIResponse) {
                 try {
                     // await messagingClient.sendTextMessage(messageSenderPsid, AIResponse);
+                    const content = typeof AIResponse === 'string' ? AIResponse : JSON.stringify(AIResponse);
                     await chatsService.handleNewMessage(
-                        { content: AIResponse, senderType: 'BOT', contentType: 'TEXT' },
+                        { content, senderType: 'BOT', contentType: 'TEXT' },
                         chat.chatId,
                     );
                 } catch (replyError) {
