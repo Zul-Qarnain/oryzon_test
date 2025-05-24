@@ -7,6 +7,7 @@ import { Customer } from '../customers/customers.types';
 import { ConnectedChannelWithIncludes } from '../channels/channels.types';
 import { messages } from '@/db/schema';
 import { Chat } from '../chats/chats.types';
+import { executeAgent } from '../ai/manager';
 
 
 
@@ -134,10 +135,28 @@ export async function handleNewMessageFromPlatform(
                 senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
                 contentType: 'TEXT',
             };
-            await chatsService.handleNewMessage(
+           const lastMsgs = await chatsService.handleNewMessage(
                 messageContent,
                 chat.chatId,
             );
+            const AIResponse = await executeAgent(
+                lastMsgs,
+                internalCustomerId,
+                channel.platformSpecificId,
+                channel.description,
+                channel.business!.businessId
+            );
+            if (AIResponse) {
+                try {
+                    // await messagingClient.sendTextMessage(messageSenderPsid, AIResponse);
+                    await chatsService.handleNewMessage(
+                        { content: AIResponse, senderType: 'BOT', contentType: 'TEXT' },
+                        chat.chatId,
+                    );
+                } catch (replyError) {
+                    console.error(`Failed to send AI response to ${messageSenderPsid}:`, replyError);
+                }
+            }
         } catch (error) {
             console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
             try {

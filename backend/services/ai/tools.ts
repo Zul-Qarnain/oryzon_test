@@ -1,8 +1,9 @@
-import { tool } from 'ai';
+import { tool } from "@langchain/core/tools";
 import { z } from 'zod';
 import { productsService } from '@/backend/services/products/products.service';
 import { ordersService } from '@/backend/services/orders/orders.service';
-import { channelsService } from '@/backend/services/channels/channels.service';
+// channelsService is imported but not used, consider removing if not needed elsewhere or for future use.
+// import { channelsService } from '@/backend/services/channels/channels.service'; 
 import { CreateProductData, UpdateProductData } from '@/backend/services/products/products.types';
 import { CreateOrderData, UpdateOrderData, CreateOrderItemData } from '@/backend/services/orders/orders.types';
 import { orderStatusEnum } from '@/db/schema'; // For order status enum
@@ -13,7 +14,9 @@ function formatObjectToString(obj: unknown, title: string): string {
     return `${title}: Not found or no data.`;
   }
   if (typeof obj === 'object' && obj !== null && 'error' in obj) {
-    return `${title} Error: ${(obj).error}`;
+    // Ensure obj.error is a string or can be converted to one safely
+    const errorVal = (obj as { error: unknown }).error;
+    return `${title} Error: ${String(errorVal)}`;
   }
   if (Array.isArray(obj)) {
     if (obj.length === 0) return `${title}: No items found.`;
@@ -48,10 +51,6 @@ function formatObjectToString(obj: unknown, title: string): string {
   return result.trim();
 }
 
-
-// Helper to get userId from connectedPageID (channelId)
-
-
 // Define OrderItemSchema for AI tool parameters
 const OrderItemSchemaForTool = z.object({
   productId: z.string().describe("ID of the product being ordered."),
@@ -60,53 +59,214 @@ const OrderItemSchemaForTool = z.object({
   currencyAtPurchase: z.string().length(3).describe("Currency of the priceAtPurchase (e.g., \"USD\").")
 });
 
-
 export const getAITools = (customerId: string, connectedPageID: string, businessId: string) => {
+  // --- Schemas ---
+  const getProductByIdSchema = z.object({
+    shortId: z.string().describe('The short ID of the product to retrieve.'),
+  });
+
+  const calculatorSchema = z.object({
+    expression: z.string().describe('The mathematical expression to evaluate (e.g., "2 + 3", "10 * 5", "20% of 50", "100 / 4")'),
+  });
+
+  const getProductByImageUrlSchema = z.object({
+    imageUrl: z.string().describe('The URL of the product image to search for.'),
+  });
+
+  const createProductSchema = z.object({
+    name: z.string().describe('Name of the product.'),
+    description: z.string().optional().describe('Detailed description of the product.'),
+    price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Price must be a valid number string, e.g., '29.99'.").describe('Price of the product (e.g., "49.99").'),
+    currency: z.string().length(3).describe('Currency code (e.g., "USD").'),
+    stock: z.number().int().min(0).optional().describe('Available stock quantity.'),
+    isAvailable: z.boolean().optional().default(true).describe('Is the product available for sale?'),
+    imageId: z.string().optional().describe('ID or URL of the product image.'),
+    shortId: z.string().optional().describe('A short identifier for the product.'),
+  });
+
+  const updateProductInfoSchema = z.object({
+    productId: z.string().describe('The ID of the product to update.'),
+    name: z.string().optional().describe('New name of the product.'),
+    description: z.string().optional().describe('New detailed description.'),
+    price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Price must be a valid number string, e.g., '29.99'.").optional().describe('New price (e.g., "49.99").'),
+    currency: z.string().length(3).optional().describe('New currency code (e.g., "USD").'),
+    stock: z.number().int().min(0).optional().describe('New stock quantity.'),
+    isAvailable: z.boolean().optional().describe('New availability status.'),
+    imageId: z.string().optional().describe('New ID or URL of the product image.'),
+    shortId: z.string().optional().describe('New short identifier.'),
+  });
+
+  const getOrderByIdSchema = z.object({
+    orderId: z.string().describe('The unique ID of the order to retrieve.'),
+  });
+
+  const createOrderSchema = z.object({
+    orderItems: z.array(OrderItemSchemaForTool).min(1).describe('Array of items in the order.'),
+    totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Total amount must be a valid number string.").describe('Total amount for the order (e.g., "100.50").'),
+    currency: z.string().length(3).describe('Currency code for the order (e.g., "USD").'),
+    orderStatus: z.enum(orderStatusEnum.enumValues).optional().default('PENDING').describe('Status of the order.'),
+    shippingAddress: z.string().optional().describe('Shipping address for the order.'),
+    billingAddress: z.string().optional().describe('Billing address for the order.'),
+  });
+
+  const updateOrderInfoSchema = z.object({
+    orderId: z.string().describe('The ID of the order to update.'),
+    orderStatus: z.enum(orderStatusEnum.enumValues).optional().describe('New status of the order.'),
+    shippingAddress: z.string().optional().describe('New shipping address.'),
+    billingAddress: z.string().optional().describe('New billing address.'),
+  });
+
+  // --- Tool Implementations ---
+  const getProductByIdExecute = async ({ shortId }: z.infer<typeof getProductByIdSchema>) => {
+    console.log(`getProductById is being called with params: ${JSON.stringify({ shortId })}`);
+    const productsResult = await productsService.getAllProducts({
+      filter: { shortId, businessId },
+      limit: 1,
+      include: {}
+    });
+    const product = productsResult.data[0];
+    if (!product) {
+      return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
+    }
+    return JSON.stringify(product, null, 2); // Return product details as a formatted string
+  };
+
+  const calculatorExecute = async ({ expression }: z.infer<typeof calculatorSchema>) => {
+    console.log(`calculator is being called with params: ${JSON.stringify({ expression })}`);
+    try {
+      const normalizedExpression = expression.toLowerCase().trim();
+      if (normalizedExpression.includes('% of')) {
+        const parts = normalizedExpression.split('% of');
+        if (parts.length === 2) {
+          const percentage = parseFloat(parts[0].trim());
+          const value = parseFloat(parts[1].trim());
+          if (!isNaN(percentage) && !isNaN(value)) {
+            const result = (percentage / 100) * value;
+            return formatObjectToString({ result }, 'Calculation Result');
+          }
+        }
+      }
+      const sanitizedExpression = normalizedExpression
+        .replace(/[^0-9+\-*/.()\s]/g, '')
+        .replace(/\s+/g, '');
+      // Ensure sanitizedExpression is not empty to prevent errors with Function constructor
+      if (!sanitizedExpression) {
+        throw new Error('Invalid or empty expression after sanitization.');
+      }
+      const result = new Function(`return ${sanitizedExpression}`)();
+      if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+        throw new Error('Invalid calculation result');
+      }
+      return formatObjectToString({ result }, 'Calculation Result');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown calculation error';
+      return formatObjectToString({ 
+        error: `Could not perform the calculation: ${errorMessage}. Please check your expression and try again.`
+      }, 'Calculation Error');
+    }
+  };
+
+  const getProductByImageUrlExecute = async ({ imageUrl }: z.infer<typeof getProductByImageUrlSchema>) => {
+    console.log(`getProductByImageUrl is being called with params: ${JSON.stringify({ imageUrl })}`);
+    const productsResult = await productsService.getAllProducts({
+      filter: { businessId, imageId: imageUrl },
+      limit: 1,
+      include: {}
+    });
+    if (!productsResult.data.length) {
+      return formatObjectToString({ error: 'Product not found for this image URL in this channel or access denied.' }, 'Product Information');
+    }
+    return formatObjectToString(productsResult.data[0], 'Product Information');
+  };
+
+  const createProductExecute = async (productParams: z.infer<typeof createProductSchema>) => {
+    console.log(`createProduct is being called with params: ${JSON.stringify(productParams)}`);
+    const productData: CreateProductData = {
+      ...productParams,
+      businessId,
+    };
+    const newProduct = await productsService.createProduct(productData);
+    return formatObjectToString(newProduct, 'Create Product Result');
+  };
+
+  const updateProductInfoExecute = async ({ productId, ...updateData }: z.infer<typeof updateProductInfoSchema>) => {
+    console.log(`updateProductInfo is being called with params: ${JSON.stringify({ productId, ...updateData })}`);
+    const product = await productsService.getProductById(productId);
+    if (!product) {
+      return formatObjectToString({ error: 'Product not found in this channel or permission denied.' }, 'Update Product Result');
+    }
+    const definedUpdateData = Object.fromEntries(Object.entries(updateData).filter(([_, v]) => v !== undefined)) as UpdateProductData;
+    if (Object.keys(definedUpdateData).length === 0) {
+      return formatObjectToString({ info: 'No update data provided.' }, 'Update Product Result');
+    }
+    if ('channelId' in definedUpdateData) {
+      delete definedUpdateData.channelId;
+    }
+    const updatedProduct = await productsService.updateProduct(productId, definedUpdateData);
+    return formatObjectToString(updatedProduct, 'Update Product Result');
+  };
+
+  const getOrderByIdExecute = async ({ orderId }: z.infer<typeof getOrderByIdSchema>) => {
+    console.log(`getOrderById is being called with params: ${JSON.stringify({ orderId })}`);
+    const order = await ordersService.getOrderById(orderId, {
+      include: { customer: true, connectedChannel: true, orderItems: { include: { product: true } } }
+    });
+    if (!order || order.customerId !== customerId || order.channelId !== connectedPageID) {
+      return formatObjectToString({ error: 'Order not found or access denied.' }, 'Order Information');
+    }
+    return formatObjectToString(order, 'Order Information');
+  };
+
+  const createOrderExecute = async (orderParams: z.infer<typeof createOrderSchema>) => {
+    console.log(`createOrder is being called with params: ${JSON.stringify(orderParams)}`);
+    const orderData: CreateOrderData = {
+      ...orderParams,
+      orderItems: orderParams.orderItems.map(item => ({ ...item }) as CreateOrderItemData),
+      customerId,
+      channelId: connectedPageID,
+      businessId,
+      shippingAddress: orderParams.shippingAddress || '',
+    };
+    const newOrder = await ordersService.createOrder(orderData);
+    return formatObjectToString(newOrder, 'Create Order Result');
+  };
+
+  const updateOrderInfoExecute = async ({ orderId, ...updateData }: z.infer<typeof updateOrderInfoSchema>) => {
+    console.log(`updateOrderInfo is being called with params: ${JSON.stringify({ orderId, ...updateData })}`);
+    const order = await ordersService.getOrderById(orderId);
+    if (!order || order.customerId !== customerId || order.channelId !== connectedPageID) {
+      return formatObjectToString({ error: 'Order not found or permission denied.' }, 'Update Order Result');
+    }
+    const definedUpdateData = Object.fromEntries(Object.entries(updateData).filter(([_, v]) => v !== undefined)) as UpdateOrderData;
+    if (Object.keys(definedUpdateData).length === 0) {
+      return formatObjectToString({ info: 'No update data provided.' }, 'Update Order Result');
+    }
+    const updatedOrder = await ordersService.updateOrder(orderId, definedUpdateData);
+    return formatObjectToString(updatedOrder, 'Update Order Result');
+  };
+
+  // --- Tools Definition ---
   const tools = {
-    // --- Product Tools ---
-    getProductById: tool({
+    getProductById: tool(getProductByIdExecute, {
+      name: 'getProductById',
       description: 'Get detailed information about a specific product by its short ID. Ask the user for the Product Short ID.',
-      parameters: z.object({
-        shortId: z.string().describe('The short ID of the product to retrieve.'),
-      }),
-      execute: async ({ shortId }) => {
-        const productsResult = await productsService.getAllProducts({
-          filter: { shortId, businessId },
-          limit: 1,
-          include: {   }
-        });
-
-        const product = productsResult.data[0];
-        if (!product) {
-          return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
-        }
-        return formatObjectToString(product, 'Product Information');
-      },
+      schema: getProductByIdSchema,
     }),
 
-    getProductByImageUrl: tool({
+    calculator: tool(calculatorExecute, {
+      name: 'calculator',
+      description: 'Perform basic mathematical calculations. You can add, subtract, multiply, divide, or calculate percentages.',
+      schema: calculatorSchema,
+    }),
+
+    getProductByImageUrl: tool(getProductByImageUrlExecute, {
+      name: 'getProductByImageUrl',
       description: 'Get product information by its image URL for the current channel. Ask the user for the Image URL.',
-      parameters: z.object({
-        imageUrl: z.string().url().describe('The URL of the product image to search for.'),
-      }),
-      execute: async ({ imageUrl }) => {
-        // Fetching userId here is mainly for consistency if other tools need it,
-        // but the primary filter for productsService will be channelId.
-
-        const productsResult = await productsService.getAllProducts({
-          filter: { businessId, imageId: imageUrl }, // Filter primarily by current channelId and imageId
-          limit: 1,
-          include: {  }
-        });
-        // Post-filter check for userId if necessary, though product service should handle this.
-        if (!productsResult.data.length) {
-          return formatObjectToString({ error: 'Product not found for this image URL in this channel or access denied.' }, 'Product Information');
-        }
-        return formatObjectToString(productsResult.data[0], 'Product Information');
-      },
+      schema: getProductByImageUrlSchema,
     }),
 
-    createProduct: tool({
+    createProduct: tool(createProductExecute, {
+      name: 'createProduct',
       description: `Create a new product, associating it with the current channel. Ask the user for the following details:
         - name (string, required): Name of the product.
         - description (string, optional): Detailed description.
@@ -116,29 +276,11 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - isAvailable (boolean, optional, default: true): Is the product available for sale?
         - imageId (string, optional): ID or URL of the product image.
         - shortId (string, optional): A short identifier for the product.`,
-      parameters: z.object({
-        name: z.string().describe('Name of the product.'),
-        description: z.string().optional().describe('Detailed description of the product.'),
-        price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Price must be a valid number string, e.g., '29.99'.").describe('Price of the product (e.g., "49.99").'),
-        currency: z.string().length(3).describe('Currency code (e.g., "USD").'),
-        stock: z.number().int().min(0).optional().describe('Available stock quantity.'),
-        isAvailable: z.boolean().optional().default(true).describe('Is the product available for sale?'),
-        imageId: z.string().optional().describe('ID or URL of the product image.'),
-        shortId: z.string().optional().describe('A short identifier for the product.'),
-      }),
-      execute: async (productParams) => {
-       
-        const productData: CreateProductData = {
-          ...productParams,
-            businessId,
-
-        };
-        const newProduct = await productsService.createProduct(productData);
-        return formatObjectToString(newProduct, 'Create Product Result');
-      },
+      schema: createProductSchema,
     }),
 
-    updateProductInfo: tool({
+    updateProductInfo: tool(updateProductInfoExecute, {
+      name: 'updateProductInfo',
       description: `Update an existing product associated with the current channel. Ask the user for the Product ID and the fields they want to update from the following:
         - name (string): New name of the product.
         - description (string): New detailed description.
@@ -150,60 +292,17 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - shortId (string): New short identifier.
 
         Note: This tool only updates products within the current channel context.Not all fields are required. Only provide the fields you want to update.`,
-      parameters: z.object({
-        productId: z.string().describe('The ID of the product to update.'),
-        name: z.string().optional().describe('New name of the product.'),
-        description: z.string().optional().describe('New detailed description.'),
-        price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Price must be a valid number string, e.g., '29.99'.").optional().describe('New price (e.g., "49.99").'),
-        currency: z.string().length(3).optional().describe('New currency code (e.g., "USD").'),
-        stock: z.number().int().min(0).optional().describe('New stock quantity.'),
-        isAvailable: z.boolean().optional().describe('New availability status.'),
-        imageId: z.string().optional().describe('New ID or URL of the product image.'),
-        shortId: z.string().optional().describe('New short identifier.'),
-      }),
-      execute: async ({ productId, ...updateData }) => {
-        const product = await productsService.getProductById(productId);
-
-        // Product must exist AND be associated with the current channel.
-        if (!product) {
-          // Secondary check for user integrity
-          return formatObjectToString({ error: 'Product not found in this channel or permission denied.' }, 'Update Product Result');
-        }
-
-        const definedUpdateData = Object.fromEntries(Object.entries(updateData).filter(([_, v]) => v !== undefined)) as UpdateProductData;
-
-        if (Object.keys(definedUpdateData).length === 0) {
-          return formatObjectToString({ info: 'No update data provided.' }, 'Update Product Result');
-        }
-        // Ensure channelId is not accidentally changed by this tool if it's part of updateData
-        if ('channelId' in definedUpdateData) {
-          delete definedUpdateData.channelId;
-        }
-
-        const updatedProduct = await productsService.updateProduct(productId, definedUpdateData);
-        return formatObjectToString(updatedProduct, 'Update Product Result');
-      },
+      schema: updateProductInfoSchema,
     }),
 
-    // --- Order Tools ---
-    getOrderById: tool({
+    getOrderById: tool(getOrderByIdExecute, {
+      name: 'getOrderById',
       description: 'Get detailed information about a specific order by its ID for the current customer and channel. Ask the user for the Order ID.',
-      parameters: z.object({
-        orderId: z.string().describe('The unique ID of the order to retrieve.'),
-      }),
-      execute: async ({ orderId }) => {
-       
-        const order = await ordersService.getOrderById(orderId, {
-          include: { customer: true, connectedChannel: true,  orderItems: { include: { product: true } } }
-        });
-        if (!order || order.customerId !== customerId || order.channelId !== connectedPageID ) {
-          return formatObjectToString({ error: 'Order not found or access denied.' }, 'Order Information');
-        }
-        return formatObjectToString(order, 'Order Information');
-      },
+      schema: getOrderByIdSchema,
     }),
 
-    createOrder: tool({
+    createOrder: tool(createOrderExecute, {
+      name: 'createOrder',
       description: `Create a new order for the current customer and channel. Ask the user for the following details:
         - orderItems (array of objects): Each object needs:
             - productId (string, required): ID of the product.
@@ -215,56 +314,16 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - orderStatus (optional, default 'PENDING'): Can be 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED'.
         - shippingAddress (string, optional): Full shipping address.
         - billingAddress (string, optional): Full billing address.`,
-      parameters: z.object({
-        orderItems: z.array(OrderItemSchemaForTool).min(1).describe('Array of items in the order.'),
-        totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Total amount must be a valid number string.").describe('Total amount for the order (e.g., "100.50").'),
-        currency: z.string().length(3).describe('Currency code for the order (e.g., "USD").'),
-        orderStatus: z.enum(orderStatusEnum.enumValues).optional().default('PENDING').describe('Status of the order.'),
-        shippingAddress: z.string().optional().describe('Shipping address for the order.'),
-        billingAddress: z.string().optional().describe('Billing address for the order.'),
-      }),
-      execute: async (orderParams) => {
-      
-        const orderData: CreateOrderData = {
-          ...orderParams,
-          orderItems: orderParams.orderItems.map(item => ({ ...item }) as CreateOrderItemData), // Ensure type compatibility
-          customerId,
-          channelId: connectedPageID,
-          businessId,
-          shippingAddress: orderParams.shippingAddress || '', // Provide default empty string for required field
-        };
-        const newOrder = await ordersService.createOrder(orderData);
-        return formatObjectToString(newOrder, 'Create Order Result');
-      },
+      schema: createOrderSchema,
     }),
 
-    updateOrderInfo: tool({
+    updateOrderInfo: tool(updateOrderInfoExecute, {
+      name: 'updateOrderInfo',
       description: `Update an existing order for the current customer on this channel. Ask the user for the Order ID and the fields to update:
         - orderStatus: New status ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED').
         - shippingAddress (string): New shipping address.
         - billingAddress (string): New billing address.`,
-      parameters: z.object({
-        orderId: z.string().describe('The ID of the order to update.'),
-        orderStatus: z.enum(orderStatusEnum.enumValues).optional().describe('New status of the order.'),
-        shippingAddress: z.string().optional().describe('New shipping address.'),
-        billingAddress: z.string().optional().describe('New billing address.'),
-      }),
-      execute: async ({ orderId, ...updateData }) => {
-       
-        const order = await ordersService.getOrderById(orderId);
-        if (!order || order.customerId !== customerId || order.channelId !== connectedPageID ) {
-          return formatObjectToString({ error: 'Order not found or permission denied.' }, 'Update Order Result');
-        }
-
-        const definedUpdateData = Object.fromEntries(Object.entries(updateData).filter(([_, v]) => v !== undefined)) as UpdateOrderData;
-
-        if (Object.keys(definedUpdateData).length === 0) {
-          return formatObjectToString({ info: 'No update data provided.' }, 'Update Order Result');
-        }
-
-        const updatedOrder = await ordersService.updateOrder(orderId, definedUpdateData);
-        return formatObjectToString(updatedOrder, 'Update Order Result');
-      },
+      schema: updateOrderInfoSchema,
     }),
   };
 
