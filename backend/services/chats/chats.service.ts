@@ -193,7 +193,7 @@ export class ChatsService {
     // 4. Retrieve and return the last minimum 100 messages for that chat
     const lastMessages = await db.query.messages.findMany({
       where: eq(messages.chatId, chatId),
-      orderBy: [desc(messages.timestamp)],
+      orderBy: [asc(messages.timestamp)],
       limit: 100,
     });
 

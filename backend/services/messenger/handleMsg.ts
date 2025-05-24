@@ -144,7 +144,7 @@ export async function handleNewMessageFromPlatform(
                 lastMsgs,
                 internalCustomerId,
                 channel.platformSpecificId,
-                channel.description,
+                channel.business?.description || null,
                 channel.business!.businessId
             );
             if (AIResponse) {

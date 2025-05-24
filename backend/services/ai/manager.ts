@@ -1,62 +1,32 @@
 import { messages } from '@/db/schema';
-// import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { CoreSystemMessage, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, UIMessage, generateText } from 'ai';
 import { generateSystemPrompt } from './prompts';
 import { getAITools } from './tools';
 
-// const google = createGoogleGenerativeAI({
-//   // custom settings
-//     apiKey: process.env.GOOGLE_API_KEY,
-// });
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, ToolMessage , SystemMessage} from '@langchain/core/messages';
 
-export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, channelDescription: string | null, businessId: string) => {
+export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string) => {
   // 1. Find the chat
-  const history: Array<CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage> | Array<UIMessage> = [];
+  const messages = []
 
-  const systemPromptContent = generateSystemPrompt(channelDescription);
+  const systemPromptContent = generateSystemPrompt(businessDescription);
+  messages.push(new SystemMessage(systemPromptContent));
 
-  history.push({
-    id: crypto.randomUUID(),
-    role: "system",
-    content: systemPromptContent,
-    parts: [{ type: "text", text: systemPromptContent }],
-  });
-  console.log(msgs)
   for (const msg of msgs) {
     if (msg.senderType === "CUSTOMER") {
-      history.push({
-        id: crypto.randomUUID(),
-        role: "user",
-        content: msg.content,
-        parts: [{ type: "text", text: msg.content }],
-      });
+      messages.push(new HumanMessage(msg.content));
     } else if (msg.senderType === "BOT") {
-      history.push({
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: msg.content,
-        parts: [{ type: "text", text: msg.content }],
-      });
+      messages.push(new AIMessage(msg.content));
     }
 
   }
-  const { getProductById, getProductByImageUrl, calculator } = getAITools(customerId, connectedPageID, businessId);
+    console.log(msgs)
 
-  console.log("History:", JSON.stringify(history));
+  const { getProductById, getProductByImageUrl, calculator , createProduct} = getAITools(customerId, connectedPageID, businessId);
 
-  // const {text} = await generateText({
-  //   model: google("gemini-2.5-flash-preview-04-17"),
-  //   prompt: msgs[msgs.length - 1].content, // Use the last message content as the prompt
-  //   tools: {
-  //     getProductById,
-  //     getProductByImageUrl,
-  //     calculator,
-  //   },
+  console.log("messages:", JSON.stringify(messages));
 
-
-  // });
 
   const model = new ChatGoogleGenerativeAI({
     model: "gemini-2.5-flash-preview-04-17",
@@ -68,9 +38,10 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
         getProductById,
         getProductByImageUrl,
         calculator,
+        createProduct
+        
   ]);
 
-  const messages = [new HumanMessage(msgs[msgs.length - 1].content)];
 
   const aiMessage = await llmWithTools.invoke(messages);
 
@@ -82,6 +53,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductById,
     getProductByImageUrl,
     calculator,
+    
   };
 
   // Check if tool_calls exist, is an array, and has elements
