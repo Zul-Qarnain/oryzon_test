@@ -168,7 +168,7 @@ export class ChatsService {
   }
 
   async handleNewMessage(
-    messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId'| 'timestamp'|"platformMessageId">,
+    messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId'| 'timestamp'>, // Exclude messageId, chatId, and timestamp as they are auto-generated
     chatId: string,
   ): Promise<(typeof messages.$inferSelect)[]> {
     // 1. Find the chat or determine businessId and provi...0

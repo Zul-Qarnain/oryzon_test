@@ -130,10 +130,11 @@ export async function handleNewMessageFromPlatform(
         const platformMessageId = fbMessage.message.mid; // Facebook's message ID
 
         try {
-            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' > = {
                 content: text,
                 senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
                 contentType: 'TEXT',
+                platformMessageId: platformMessageId, // Include platformMessageId if needed
             };
            const lastMsgs = await chatsService.handleNewMessage(
                 messageContent,
@@ -148,10 +149,11 @@ export async function handleNewMessageFromPlatform(
             );
             if (AIResponse) {
                 try {
-                    // await messagingClient.sendTextMessage(messageSenderPsid, AIResponse);
+                    
                     const content = typeof AIResponse === 'string' ? AIResponse : JSON.stringify(AIResponse);
+                    await messagingClient.sendTextMessage(messageSenderPsid, content);
                     await chatsService.handleNewMessage(
-                        { content, senderType: 'BOT', contentType: 'TEXT' },
+                        { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
                         chat.chatId,
                     );
                 } catch (replyError) {
