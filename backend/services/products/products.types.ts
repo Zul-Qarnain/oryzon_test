@@ -24,7 +24,7 @@ export interface GetProductByIdOptions {
 export interface GetAllProductsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Product, 'name' | 'currency' | 'isAvailable' | 'businessId' | 'providerUserId' | 'imageId' | 'shortId'>>;
+  filter?: ProductFilterOptions; // Changed to use the more comprehensive ProductFilterOptions
   include?: ProductIncludeOptions;
 }
 

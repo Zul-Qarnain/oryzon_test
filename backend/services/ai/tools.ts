@@ -4,7 +4,7 @@ import { productsService } from '@/backend/services/products/products.service';
 import { ordersService } from '@/backend/services/orders/orders.service';
 // channelsService is imported but not used, consider removing if not needed elsewhere or for future use.
 // import { channelsService } from '@/backend/services/channels/channels.service'; 
-import { CreateProductData, UpdateProductData } from '@/backend/services/products/products.types';
+import { CreateProductData, UpdateProductData, ProductFilterOptions } from '@/backend/services/products/products.types'; // Added ProductFilterOptions
 import { CreateOrderData, UpdateOrderData, CreateOrderItemData } from '@/backend/services/orders/orders.types';
 import { orderStatusEnum } from '@/db/schema'; // For order status enum
 
@@ -114,6 +114,26 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     orderStatus: z.enum(orderStatusEnum.enumValues).optional().describe('New status of the order.'),
     shippingAddress: z.string().optional().describe('New shipping address.'),
     billingAddress: z.string().optional().describe('New billing address.'),
+  });
+
+  const getProductByKeywordSchema = z.object({
+    keyword: z.string().describe('The keyword to search for in product names and descriptions.'),
+    limit: z.number().int().min(1).max(50).optional().default(10).describe('Number of products to return.'),
+    offset: z.number().int().min(0).optional().default(0).describe('Offset for pagination.'),
+  });
+
+  const getProductByKeywordWithMaxPriceSchema = z.object({
+    keyword: z.string().describe('The keyword to search for in product names and descriptions.'),
+    maxPrice: z.number().positive().describe('The maximum price for the products.'),
+    limit: z.number().int().min(1).max(50).optional().default(10).describe('Number of products to return.'),
+    offset: z.number().int().min(0).optional().default(0).describe('Offset for pagination.'),
+  });
+
+  const getProductByKeywordWithMinPriceSchema = z.object({
+    keyword: z.string().describe('The keyword to search for in product names and descriptions.'),
+    minPrice: z.number().nonnegative().describe('The minimum price for the products.'),
+    limit: z.number().int().min(1).max(50).optional().default(10).describe('Number of products to return.'),
+    offset: z.number().int().min(0).optional().default(0).describe('Offset for pagination.'),
   });
 
   // --- Tool Implementations ---
@@ -253,6 +273,75 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     return formatObjectToString(updatedOrder, 'Update Order Result');
   };
 
+  const getProductByKeywordExecute = async ({ keyword, limit, offset }: z.infer<typeof getProductByKeywordSchema>) => {
+    console.log(`getProductByKeyword is being called with params: ${JSON.stringify({ keyword, limit, offset })} and businessId: ${businessId}`);
+    try {
+      const productsResult = await productsService.getProductByKeyword(keyword, {
+        filter: { businessId: businessId }, // Ensure search is scoped to the current business
+        limit: limit,
+        offset: offset,
+        include: {} // Add includes if necessary, e.g., { business: true }
+      });
+      console.log(`Products found by keyword '${keyword}': ${JSON.stringify(productsResult)}`);
+      if (!productsResult.data || productsResult.data.length === 0) {
+        return formatObjectToString({ info: 'No products found matching the keyword for this business.' }, 'Product Search Result');
+      }
+      // Return product details as a formatted string or JSON string
+      return JSON.stringify(productsResult, null, 2); 
+    } catch (error) {
+      console.error(`Error fetching products by keyword '${keyword}':`, error);
+      return formatObjectToString({
+        error: `Could not retrieve products by keyword: ${(error as Error).message}`
+      }, 'Product Search Error');
+    }
+  };
+
+  const getProductByKeywordWithMaxPriceExecute = async ({ keyword, maxPrice, limit, offset }: z.infer<typeof getProductByKeywordWithMaxPriceSchema>) => {
+    console.log(`getProductByKeywordWithMaxPrice is being called with params: ${JSON.stringify({ keyword, maxPrice, limit, offset })} and businessId: ${businessId}`);
+    try {
+      const filterOptions: ProductFilterOptions = { businessId: businessId, maxPrice: maxPrice };
+      const productsResult = await productsService.getProductByKeyword(keyword, {
+        filter: filterOptions,
+        limit: limit,
+        offset: offset,
+        include: {} 
+      });
+      console.log(`Products found by keyword '${keyword}' with max price ${maxPrice}: ${JSON.stringify(productsResult)}`);
+      if (!productsResult.data || productsResult.data.length === 0) {
+        return formatObjectToString({ info: `No products found matching the keyword '${keyword}' with a maximum price of ${maxPrice} for this business.` }, 'Product Search Result');
+      }
+      return JSON.stringify(productsResult, null, 2);
+    } catch (error) {
+      console.error(`Error fetching products by keyword '${keyword}' with max price ${maxPrice}:`, error);
+      return formatObjectToString({
+        error: `Could not retrieve products by keyword with max price: ${(error as Error).message}`
+      }, 'Product Search Error');
+    }
+  };
+
+  const getProductByKeywordWithMinPriceExecute = async ({ keyword, minPrice, limit, offset }: z.infer<typeof getProductByKeywordWithMinPriceSchema>) => {
+    console.log(`getProductByKeywordWithMinPrice is being called with params: ${JSON.stringify({ keyword, minPrice, limit, offset })} and businessId: ${businessId}`);
+    try {
+      const filterOptions: ProductFilterOptions = { businessId: businessId, minPrice: minPrice };
+      const productsResult = await productsService.getProductByKeyword(keyword, {
+        filter: filterOptions,
+        limit: limit,
+        offset: offset,
+        include: {}
+      });
+      console.log(`Products found by keyword '${keyword}' with min price ${minPrice}: ${JSON.stringify(productsResult)}`);
+      if (!productsResult.data || productsResult.data.length === 0) {
+        return formatObjectToString({ info: `No products found matching the keyword '${keyword}' with a minimum price of ${minPrice} for this business.` }, 'Product Search Result');
+      }
+      return JSON.stringify(productsResult, null, 2);
+    } catch (error) {
+      console.error(`Error fetching products by keyword '${keyword}' with min price ${minPrice}:`, error);
+      return formatObjectToString({
+        error: `Could not retrieve products by keyword with min price: ${(error as Error).message}`
+      }, 'Product Search Error');
+    }
+  };
+
   // --- Tools Definition ---
   const tools = {
     getProductById: tool(getProductByIdExecute, {
@@ -332,6 +421,24 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - shippingAddress (string): New shipping address.
         - billingAddress (string): New billing address.`,
       schema: updateOrderInfoSchema,
+    }),
+
+    getProductByKeyword: tool(getProductByKeywordExecute, {
+      name: 'getProductByKeyword',
+      description: 'Search for products by a keyword in their name and description for the current business. Ask the user for the keyword. Optionally, specify limit and offset for pagination.',
+      schema: getProductByKeywordSchema,
+    }),
+
+    getProductByKeywordWithMaxPrice: tool(getProductByKeywordWithMaxPriceExecute, {
+      name: 'getProductByKeywordWithMaxPrice',
+      description: 'Search for products by keyword with a maximum price. Ask the user for the keyword and the maximum price. Optionally, specify limit and offset.',
+      schema: getProductByKeywordWithMaxPriceSchema,
+    }),
+
+    getProductByKeywordWithMinPrice: tool(getProductByKeywordWithMinPriceExecute, {
+      name: 'getProductByKeywordWithMinPrice',
+      description: 'Search for products by keyword with a minimum price. Ask the user for the keyword and the minimum price. Optionally, specify limit and offset.',
+      schema: getProductByKeywordWithMinPriceSchema,
     }),
   };
 

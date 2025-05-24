@@ -23,10 +23,17 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   }
     console.log(msgs)
 
-  const { getProductById, getProductByImageUrl, calculator , createProduct} = getAITools(customerId, connectedPageID, businessId);
+  const { 
+    getProductById, 
+    getProductByImageUrl, 
+    calculator, 
+    createProduct,
+    getProductByKeyword,
+    getProductByKeywordWithMaxPrice,
+    getProductByKeywordWithMinPrice 
+  } = getAITools(customerId, connectedPageID, businessId);
 
   console.log("messages:", JSON.stringify(messages));
-
 
   const model = new ChatGoogleGenerativeAI({
     model: "gemini-2.5-flash-preview-04-17",
@@ -38,10 +45,9 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
         getProductById,
         getProductByImageUrl,
         calculator,
-        createProduct
-        
+        createProduct,
+        getProductByKeyword,
   ]);
-
 
   const aiMessage = await llmWithTools.invoke(messages);
 
@@ -53,7 +59,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductById,
     getProductByImageUrl,
     calculator,
-    
+    createProduct,
+    getProductByKeyword,
   };
 
   // Check if tool_calls exist, is an array, and has elements

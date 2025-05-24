@@ -11,7 +11,7 @@ import {
   UpdateManyProductsData,
   ProductWithIncludes,
 } from './products.types';
-import { and, count, eq, ilike, inArray, gte, lte, desc } from 'drizzle-orm';
+import { and, or, count, eq, ilike, inArray, gte, lte, desc } from 'drizzle-orm'; // Added 'or'
 
 export class ProductsService {
   constructor() {}
@@ -160,6 +160,79 @@ export class ProductsService {
     }
     const result = await db.delete(products).where(inArray(products.productId, filter.ids as string[]));
     return { count: result.rowCount ?? 0 }; // rowCount is specific to pg driver, may need adjustment for Neon HTTP
+  }
+
+  async getProductByKeyword(keyword: string, options?: GetAllProductsOptions): Promise<{ data: ProductWithIncludes[]; total: number }> {
+    const page = options?.limit ?? 10;
+    const offset = options?.offset ?? 0;
+
+    const filter: ProductFilterOptions | undefined = options?.filter;
+    const conditions = [];
+
+    // Keyword search condition
+    if (keyword && keyword.trim() !== '') {
+      conditions.push(or(ilike(products.name, `%${keyword}%`), ilike(products.description, `%${keyword}%`)));
+    }
+
+    // Additional filters from options
+    if (filter?.name) { // This could be an additional filter if needed, or could be part of keyword logic
+      conditions.push(ilike(products.name, `%${filter.name}%`));
+    }
+    if (filter?.businessId) {
+      conditions.push(eq(products.businessId, filter.businessId));
+    }
+    if (filter?.providerUserId) {
+      conditions.push(eq(products.providerUserId, filter.providerUserId));
+    }
+    if (filter?.isAvailable !== undefined) {
+      conditions.push(eq(products.isAvailable, filter.isAvailable));
+    }
+    if (filter?.currency) {
+      conditions.push(eq(products.currency, filter.currency));
+    }
+    if (filter?.minPrice !== undefined) {
+      conditions.push(gte(products.price, filter.minPrice.toString()));
+    }
+    if (filter?.maxPrice !== undefined) {
+      conditions.push(lte(products.price, filter.maxPrice.toString()));
+    }
+    if (filter?.createdAtBefore) {
+      conditions.push(lte(products.createdAt, filter.createdAtBefore));
+    }
+    if (filter?.createdAtAfter) {
+      conditions.push(gte(products.createdAt, filter.createdAtAfter));
+    }
+    if (filter?.imageId) {
+      conditions.push(eq(products.imageId, filter.imageId));
+    }
+    if (filter?.shortId) {
+      conditions.push(eq(products.shortId, filter.shortId));
+    }
+
+    const productsQuery = db.query.products.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      limit: page,
+      offset: offset,
+      with: {
+        business: options?.include?.business ? true : undefined,
+        userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
+        orderItems: options?.include?.orderItems
+          ? {
+              limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
+              with: {
+                order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
+              },
+            }
+          : undefined,
+      },
+      orderBy: [desc(products.createdAt)] // Default order
+    });
+
+    const totalQuery = db.select({ value: count() }).from(products).where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const [data, totalResult] = await Promise.all([productsQuery, totalQuery]);
+    
+    return { data, total: totalResult[0]?.value ?? 0 };
   }
 }
 
