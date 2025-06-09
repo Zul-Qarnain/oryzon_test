@@ -28,9 +28,11 @@ export async function POST(request: NextRequest): Promise<Response> {
         const messages: FacebookMessageObject[] = FacebookMessageParser.parsePayload(body);
 
         for (const message of messages) {
-            console.log("loll")
+            console.log("loll recip sender")
             console.log(message.recipient.id)
             console.log(message.sender.id)
+            jsonString = JSON.stringify(message); 
+            console.log(jsonString); 
             if(message.sender.id != message.recipient.id){
           await handleNewMessageFromPlatform(
             message.recipient.id,
