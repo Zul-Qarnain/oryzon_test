@@ -26,7 +26,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     try {
         const body = await request.json();
         const messages: FacebookMessageObject[] = FacebookMessageParser.parsePayload(body);
-
+        const response = new Response('EVENT_RECEIVED', { status: 200 });
+        (async () => {
         for (const message of messages) {
             console.log("loll recip sender")
             console.log(message.recipient.id)
@@ -42,8 +43,11 @@ export async function POST(request: NextRequest): Promise<Response> {
             }
 
         }
+            })().catch(console.error);
 
-        return new Response('EVENT_RECEIVED', { status: 200 });
+    return response;
+
+        
     } catch (error) {
         console.error('Error handling message:', error);
         return new Response('Internal Server Error', { status: 500 });
