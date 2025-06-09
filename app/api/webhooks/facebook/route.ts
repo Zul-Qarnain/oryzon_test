@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { handleNewMessageFromPlatform } from '@/backend/services/messenger/handleMsg';
 import { channelsService } from '@/backend/services//channels/channels.service';
 import { customersService } from '@/backend/services//customers/customers.service';
 import { chatsService } from '@/backend/services//chats/chats.service';
@@ -189,7 +188,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                                 channel.business!.businessId,
                                 (ms) => console.log(ms) // Log function to capture messages
                             );
-                            
+
                             if (AIResponse) {
                                 try {
 
