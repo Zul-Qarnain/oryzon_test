@@ -16,6 +16,8 @@ export async function handleNewMessageFromPlatform(
     fbMessage: FacebookMessageObject, // The parsed message object from Facebook
     senderPlatformId: string // The PSID of the user who sent the message
 ): Promise<void> {
+   if (senderPlatformId === recipientPageId) { // The message is from your page itself (bot) 
+       return; }
 
     // 1. Find ConnectedChannel using recipientPageId
     let channel: ConnectedChannelWithIncludes | undefined;
