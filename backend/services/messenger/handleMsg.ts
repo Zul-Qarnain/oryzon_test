@@ -16,8 +16,12 @@ export async function handleNewMessageFromPlatform(
     fbMessage: FacebookMessageObject, // The parsed message object from Facebook
     senderPlatformId: string // The PSID of the user who sent the message
 ): Promise<void> {
-   if (senderPlatformId === recipientPageId) { // The message is from your page itself (bot) 
-       return; }
+   // Check if the message is from the page itself (bot message)
+   // In Facebook Messenger, when your bot sends a message, the sender.id will be the page ID
+   if (senderPlatformId === recipientPageId || fbMessage.sender.id === recipientPageId) { 
+       console.log('Ignoring message from page itself (bot message)');
+       return; 
+   }
 
     // 1. Find ConnectedChannel using recipientPageId
     let channel: ConnectedChannelWithIncludes | undefined;
@@ -94,6 +98,12 @@ export async function handleNewMessageFromPlatform(
 
     const messageSenderPsid = fbMessage.sender.id; // PSID from the specific message
 
+    // Additional safety check - make sure we're not processing our own messages
+    if (messageSenderPsid === recipientPageId) {
+        console.log('Detected bot message by sender PSID, ignoring');
+        return;
+    }
+
     if (fbMessage.message?.attachments) {
         for (const attachment of fbMessage.message.attachments) {
             if (attachment.type === 'image' && attachment.payload && 'url' in attachment.payload) {
@@ -158,29 +168,3 @@ export async function handleNewMessageFromPlatform(
                         { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
                         chat.chatId,
                     );
-                } catch (replyError) {
-                    console.error(`Failed to send AI response to ${messageSenderPsid}:`, replyError);
-                }
-            }
-        } catch (error) {
-            console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
-            try {
-                await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
-            } catch (replyError) {
-                console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
-            }
-        }
-    } else {
-        console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.message);
-        try {
-            await messagingClient.sendTextMessage(
-                messageSenderPsid,
-                `Received a message of a type we don't fully support yet.`
-            );
-        } catch (error) {
-            console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
-        }
-    }
-}
-
-
