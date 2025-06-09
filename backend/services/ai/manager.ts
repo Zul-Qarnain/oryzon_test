@@ -95,6 +95,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
             tool_call_id: toolCall.id, // Use toolCall.id from the AI's tool_call object
           }));
         } catch (error) {
+          console.log(error)
           log(`Error invoking tool ${toolName}: ${(error as Error).message}`);
           messages.push(new ToolMessage({
             content: `Error executing tool ${toolName}: ${(error as Error).message}`,

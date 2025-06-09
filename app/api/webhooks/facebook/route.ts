@@ -183,7 +183,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                             const AIResponse = await executeAgent(
                                 lastMsgs,
                                 internalCustomerId,
-                                channel.platformSpecificId,
+                                channel.channelId,
                                 channel.business?.description || null,
                                 channel.business!.businessId,
                                 (ms) => console.log(ms) // Log function to capture messages

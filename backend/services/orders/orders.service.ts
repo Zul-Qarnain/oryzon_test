@@ -19,8 +19,8 @@ export class OrdersService {
 
   async createOrder(data: CreateOrderData): Promise<OrderWithIncludes | null> {
     // This operation should ideally be a transaction
-    return db.transaction(async (tx) => {
-      const [newOrder] = await tx
+    // return db.transaction(async (tx) => {
+      const [newOrder] = await db
         .insert(orders)
         .values({
           businessId: data.businessId, // Added businessId
@@ -37,7 +37,7 @@ export class OrdersService {
 
       if (!newOrder || !data.orderItems || data.orderItems.length === 0) {
         // If order creation failed or no items, rollback (implicitly by throwing or returning null from transaction)
-        tx.rollback(); 
+        // tx.rollback(); // Removed as we are not in a transaction
         return null; 
       }
 
@@ -49,11 +49,11 @@ export class OrdersService {
         currencyAtPurchase: item.currencyAtPurchase,
       }));
 
-      const newOrderItems = await tx.insert(orderItems).values(orderItemsToInsert).returning();
+      const newOrderItems = await db.insert(orderItems).values(orderItemsToInsert).returning();
 
       // Fetch the full order with items to return
       // This is a simplified re-fetch. In a real scenario, you might construct the object.
-      const fullOrder = await tx.query.orders.findFirst({
+      const fullOrder = await db.query.orders.findFirst({
         where: eq(orders.orderId, newOrder.orderId),
         with: {
           business: true, // Added business
@@ -67,7 +67,7 @@ export class OrdersService {
         }
       });
       return fullOrder || null;
-    });
+    // }); // Removed closing part of db.transaction
   }
 
   async getOrderById(orderId: string, options?: GetOrderByIdOptions): Promise<OrderWithIncludes | null> {

@@ -1,0 +1,26 @@
+curl -X POST http://localhost:3000/api/webhooks/facebook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "object": "page",
+    "entry": [
+      {
+        "id": "664738043390601",
+        "time": 1234567890,
+        "messaging": [
+          {
+            "sender": {
+              "id": "b3d9e6d1-5fc8-4f37-9425-1a6b1e6e5bd7"
+            },
+            "recipient": {
+              "id": "664738043390601"
+            },
+            "timestamp": 1234567890123,
+            "message": {
+              "mid": "mid.$cAABa-abc123",
+              "text": "make a order for shirt"
+            }
+          }
+        ]
+      }
+    ]
+  }'
