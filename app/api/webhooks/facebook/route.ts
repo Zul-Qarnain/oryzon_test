@@ -189,6 +189,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                                 channel.business!.businessId,
                                 (ms) => console.log(ms) // Log function to capture messages
                             );
+                            
                             if (AIResponse) {
                                 try {
 
