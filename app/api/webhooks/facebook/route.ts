@@ -33,7 +33,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             console.log(message.sender.id)
             const jsonString = JSON.stringify(message); 
             console.log(jsonString); 
-            if(message.sender.id != message.recipient.id && !message.message.is_echo){
+            if(message.sender.id != message.recipient.id && !message!.message!.is_echo){
           await handleNewMessageFromPlatform(
             message.recipient.id,
             message,
