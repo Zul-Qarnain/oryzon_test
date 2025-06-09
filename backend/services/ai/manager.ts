@@ -29,7 +29,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     createProduct,
     getProductByKeyword,
     getProductByKeywordWithMaxPrice,
-    getProductByKeywordWithMinPrice 
+    getProductByKeywordWithMinPrice ,
+  createOrder
   } = getAITools(customerId, connectedPageID, businessId);
 
   log("messages: " + JSON.stringify(messages));
@@ -60,6 +61,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     calculator,
     createProduct,
     getProductByKeyword,
+    createOrder,
   };
 
   // Check if tool_calls exist, is an array, and has elements
