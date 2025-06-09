@@ -6,7 +6,7 @@ import { getAITools } from './tools';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, AIMessage, ToolMessage , SystemMessage} from '@langchain/core/messages';
 
-export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string) => {
+export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, log: (message: string) => void) => {
   // 1. Find the chat
   const messages = []
 
@@ -19,9 +19,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     } else if (msg.senderType === "BOT") {
       messages.push(new AIMessage(msg.content));
     }
-
   }
-    console.log(msgs)
+    log(JSON.stringify(msgs))
 
   const { 
     getProductById, 
@@ -33,7 +32,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeywordWithMinPrice 
   } = getAITools(customerId, connectedPageID, businessId);
 
-  console.log("messages:", JSON.stringify(messages));
+  log("messages: " + JSON.stringify(messages));
 
   const model = new ChatGoogleGenerativeAI({
     model: "gemini-2.5-flash-preview-04-17",
@@ -51,7 +50,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
 
   const aiMessage = await llmWithTools.invoke(messages);
 
-  console.log(aiMessage);
+  log(JSON.stringify(aiMessage));
 
   messages.push(aiMessage);
 
@@ -68,7 +67,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     for (const toolCall of aiMessage.tool_calls) {
       // Ensure toolCall has 'name' and 'id' properties. LangChain tool_calls should have these.
       if (!toolCall.name || typeof toolCall.id === 'undefined') {
-        console.warn("Skipping malformed tool_call (missing name or id):", toolCall);
+        log("Skipping malformed tool_call (missing name or id): " + JSON.stringify(toolCall));
         // Optionally, push a ToolMessage indicating this malformed call if needed for the LLM to react.
         // For now, just skipping.
         continue;
@@ -79,7 +78,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
 
       if (selectedTool) {
         try {
-          console.log(`Invoking tool: ${toolName} with args:`, toolCall.args);
+          log(`Invoking tool: ${toolName} with args: ${JSON.stringify(toolCall.args)}`);
           // Perform a more specific cast on selectedTool or its invoke method
           // This tells TypeScript to trust that 'selectedTool' is a callable function
           // with an 'invoke' method that can accept 'toolCall.args'.
@@ -93,14 +92,14 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
             tool_call_id: toolCall.id, // Use toolCall.id from the AI's tool_call object
           }));
         } catch (error) {
-          console.error(`Error invoking tool ${toolName}:`, error);
+          log(`Error invoking tool ${toolName}: ${(error as Error).message}`);
           messages.push(new ToolMessage({
             content: `Error executing tool ${toolName}: ${(error as Error).message}`,
             tool_call_id: toolCall.id,
           }));
         }
       } else {
-        console.warn(`Tool ${toolName} not found.`);
+        log(`Tool ${toolName} not found.`);
         messages.push(new ToolMessage({
           content: `Tool ${toolName} not found.`,
           tool_call_id: toolCall.id,
@@ -108,18 +107,20 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
       }
     }
 
-    console.log("Messages after tool processing:", messages);
+    log("Messages after tool processing: " + JSON.stringify(messages));
     // If tools were called, invoke the LLM again with the updated messages array.
     // The 'messages' array now contains: HumanMessage, AIMessage (with tool_calls), and ToolMessages.
     const finalAiResponse = await llmWithTools.invoke(messages);
-    console.log("Final AI Response after tool calls:", finalAiResponse);
-    console.log("Final generated content to return:", finalAiResponse.content);
+    log("Final AI Response after tool calls: " + JSON.stringify(finalAiResponse));
+    log("Final generated content to return: " + JSON.stringify(finalAiResponse.content));
     return finalAiResponse.content; // Return content of the final AI response
   } else {
     // No tool calls were made in the initial AI response, or tool_calls array was empty/malformed.
     // Return the content of the initial aiMessage.
-    console.log("No tool calls made or tool_calls empty/malformed. Returning initial AI content.");
-    console.log("Final generated content to return:", aiMessage.content);
+    log("No tool calls made or tool_calls empty/malformed. Returning initial AI content.");
+    log("Final generated content to return: " + JSON.stringify(aiMessage.content));
     return aiMessage.content;
   }
 };
+
+ 
