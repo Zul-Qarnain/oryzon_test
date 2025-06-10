@@ -88,7 +88,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const toolFn = selectedTool as { invoke: (args: any) => Promise<any> };
           const toolResultData = await toolFn.invoke(toolCall.args); 
-          
+          log(typeof toolResultData === 'string' ? toolResultData : JSON.stringify(toolResultData));
           // Construct ToolMessage correctly for LangChain
           messages.push(new ToolMessage({
             content: typeof toolResultData === 'string' ? toolResultData : JSON.stringify(toolResultData),
