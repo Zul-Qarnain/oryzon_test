@@ -51,7 +51,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
         createOrder,
     replyUser
     
-  ], tool_choice: "any"
+  ], {tool_choice: "any"}
                                       );
 
   const aiMessage = await llmWithTools.invoke(messages);
