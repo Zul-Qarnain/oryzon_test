@@ -70,7 +70,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     replyUser
   };
 
-  function processMsg(aiMessage:any){
+ async function processMsg(aiMessage:any){
 
   // Check if tool_calls exist, is an array, and has elements
   if (aiMessage.tool_calls && Array.isArray(aiMessage.tool_calls) && aiMessage.tool_calls.length > 0) {
@@ -130,7 +130,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     const finalAiResponse = await llmWithTools.invoke(messages);
     log("Final AI Response after tool calls: " + JSON.stringify(finalAiResponse));
     log("Final generated content to return: " + JSON.stringify(finalAiResponse.content));
-    return processMsg(finalAiResponse); // Return content of the final AI response
+    return (await processMsg(finalAiResponse)); // Return content of the final AI response
   } else {
     // No tool calls were made in the initial AI response, or tool_calls array was empty/malformed.
     // Return the content of the initial aiMessage.
@@ -139,7 +139,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     return aiMessage.content;
   }
   }
-return processMsg(aiMessagex);
+return (await processMsg(aiMessagex));
 
 };
 
