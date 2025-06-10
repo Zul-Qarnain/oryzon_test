@@ -436,6 +436,14 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       schema: getProductByKeywordWithMaxPriceSchema,
     }),
 
+    replyUser: tool((msg ) => { console.log(msg)}, {
+      name: 'replyUser',
+      description:'reply to user using msg',
+      schema:z.object({
+    msg: z.string().describe('The message to reply')
+      }),
+    }),
+
     getProductByKeywordWithMinPrice: tool(getProductByKeywordWithMinPriceExecute, {
       name: 'getProductByKeywordWithMinPrice',
       description: 'Search for products by keyword with a minimum price. Ask the user for the keyword and the minimum price. Optionally, specify limit and offset.',
