@@ -85,9 +85,9 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
       const toolName = toolCall.name as keyof typeof toolsByName;
       const selectedTool = toolsByName[toolName];
  if(toolName == 'replyUser'){
-   log("Reply User tool called skipping");
-   continue ;
- 
+ log("reply user tool called");
+   return toolCall!.args!.msg;
+
    
  }
       if (selectedTool) {
