@@ -130,6 +130,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     const finalAiResponse = await llmWithTools.invoke(messages);
     log("Final AI Response after tool calls: " + JSON.stringify(finalAiResponse));
     log("Final generated content to return: " + JSON.stringify(finalAiResponse.content));
+    messages.push(finalAiResponse);
     return (await processMsg(finalAiResponse)); // Return content of the final AI response
   } else {
     // No tool calls were made in the initial AI response, or tool_calls array was empty/malformed.
