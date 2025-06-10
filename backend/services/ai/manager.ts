@@ -30,7 +30,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeyword,
     getProductByKeywordWithMaxPrice,
     getProductByKeywordWithMinPrice ,
-  createOrder
+  createOrder,
+    replyUser
   } = getAITools(customerId, connectedPageID, businessId);
 
   log("messages: " + JSON.stringify(messages));
@@ -48,7 +49,10 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
         createProduct,
         getProductByKeyword,
         createOrder,
-  ]);
+    replyUser
+    
+  ], tool_choice: "any"
+                                      );
 
   const aiMessage = await llmWithTools.invoke(messages);
 
@@ -63,6 +67,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     createProduct,
     getProductByKeyword,
     createOrder,
+    replyUser
   };
 
   // Check if tool_calls exist, is an array, and has elements
@@ -75,10 +80,16 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
         // For now, just skipping.
         continue;
       }
+      
 
       const toolName = toolCall.name as keyof typeof toolsByName;
       const selectedTool = toolsByName[toolName];
-
+ if(toolName == 'replyUser'){
+   log("Reply User tool called skipping");
+   continue ;
+ 
+   
+ }
       if (selectedTool) {
         try {
           log(`Invoking tool: ${toolName} with args: ${JSON.stringify(toolCall.args)}`);
