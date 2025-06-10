@@ -45,7 +45,7 @@ function formatObjectToString(obj: unknown, title: string): string {
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as Record<string, unknown>)[key];
-      result += `  ${key}: ${formatValue(value).trimStart()}\n`;
+      result += `  ${key == 'shortId' ? 'shortTag' : key}: ${formatValue(value).trimStart()}\n`;
     }
   }
   return result.trim();
