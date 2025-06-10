@@ -436,7 +436,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       schema: getProductByKeywordWithMaxPriceSchema,
     }),
 
-    replyUser: tool((msg ) => { console.log(msg)}, {
+    replyUser: tool(({msg} ) => { console.log(msg)}, {
       name: 'replyUser',
       description:'reply to user using msg',
       schema:z.object({
