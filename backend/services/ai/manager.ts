@@ -8,7 +8,7 @@ import { HumanMessage, AIMessage, ToolMessage , SystemMessage} from '@langchain/
 
 export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, log: (message: string) => void) => {
   // 1. Find the chat
-  const messages = []
+  const messages:any[] = []
 
   const systemPromptContent = generateSystemPrompt(businessDescription);
   messages.push(new SystemMessage(systemPromptContent));
