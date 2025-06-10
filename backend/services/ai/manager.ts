@@ -54,11 +54,11 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   ], {tool_choice: "any"}
                                       );
 
-  const aiMessage = await llmWithTools.invoke(messages);
+  const aiMessagex = await llmWithTools.invoke(messages);
 
-  log(JSON.stringify(aiMessage));
+  log(JSON.stringify(aiMessagex));
 
-  messages.push(aiMessage);
+  messages.push(aiMessagex);
 
   const toolsByName = {
     getProductById,
@@ -69,6 +69,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     createOrder,
     replyUser
   };
+
+  function processMsg(aiMessage:any){
 
   // Check if tool_calls exist, is an array, and has elements
   if (aiMessage.tool_calls && Array.isArray(aiMessage.tool_calls) && aiMessage.tool_calls.length > 0) {
@@ -128,7 +130,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     const finalAiResponse = await llmWithTools.invoke(messages);
     log("Final AI Response after tool calls: " + JSON.stringify(finalAiResponse));
     log("Final generated content to return: " + JSON.stringify(finalAiResponse.content));
-    return finalAiResponse.content; // Return content of the final AI response
+    return processMsg(finalAiResponse); // Return content of the final AI response
   } else {
     // No tool calls were made in the initial AI response, or tool_calls array was empty/malformed.
     // Return the content of the initial aiMessage.
@@ -136,6 +138,9 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     log("Final generated content to return: " + JSON.stringify(aiMessage.content));
     return aiMessage.content;
   }
+  }
+return processMsg(aiMessagex);
+
 };
 
  
