@@ -150,7 +150,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       if (!product) {
         return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
       }
-      return JSON.stringify(product, null, 2); // Return product details as a formatted string
+      return formatObjectToString(product,"Product Info"); // Return product details as a formatted string
     } catch (error) {
       console.error(`Error fetching product by ID ${shortId}:`, error);
       return formatObjectToString({
@@ -287,7 +287,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         return formatObjectToString({ info: 'No products found matching the keyword for this business.' }, 'Product Search Result');
       }
       // Return product details as a formatted string or JSON string
-      return JSON.stringify(productsResult, null, 2); 
+      return formatObjectToString(productsResult.data[0],"Product Info")
     } catch (error) {
       console.error(`Error fetching products by keyword '${keyword}':`, error);
       return formatObjectToString({
