@@ -54,7 +54,7 @@ function formatObjectToString(obj: unknown, title: string): string {
 
 // Define OrderItemSchema for AI tool parameters
 const OrderItemSchemaForTool = z.object({
-  productId: z.string().describe("ID of the product being ordered."),
+  productId: z.string().describe("ID of the product being ordered. IT IS DIFFERENT FROM shortId , IT IS THE ACTUAL ID OF PRODUCT IN DATABASE. You may find it in previous chat messages , may be the previous message contains product info which might have the id.If you dont have it,  find it by using other product getting tool like getProductByKeywords getProductByid etc. BUT NEVER ASK USER FOR IT. it is internal id in database."),
   quantity: z.number().min(1).describe("Quantity of the product."),
   priceAtPurchase: z.string().describe("Price of the product at the time of purchase (e.g., \"29.99\")."),
   currencyAtPurchase: z.string().length(3).describe("Currency of the priceAtPurchase (e.g., \"USD\").")
