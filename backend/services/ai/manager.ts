@@ -37,7 +37,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   log("messages: " + JSON.stringify(messages));
 
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-preview-04-17",
+    model: "gemini-2.5-flash-lite",
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     temperature: 0.2,
   });
