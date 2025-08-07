@@ -367,8 +367,8 @@ export const getAITools = (customerId: string, connectedPageID: string, business
   // --- Tools Definition ---
   const tools = {
     getProductById: tool(getProductByIdExecute, {
-      name: 'getProductById',
-      description: 'Get detailed information about a specific product by its short ID. Ask the user for the Product Short ID.',
+      name: 'getProductByShortTag',
+      description: 'Get detailed information about a specific product by its short tag. Ask the user for the Product Short Tag. Carefull it is not the product id , it is product short tag.',
       schema: getProductByIdSchema,
     }),
 
@@ -445,7 +445,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     getProductByKeyword: tool(getProductByKeywordExecute, {
       name: 'getProductByKeyword',
-      description: 'Search for products by a keyword in their name and description for the current business. Ask the user for the keyword. Optionally, specify limit and offset for pagination. Must include product id in the reply.',
+      description: 'Search for products by a keyword in their name and description for the current business. Ask the user for the keyword. Optionally, specify limit and offset for pagination. Must include product id and short tag in the reply.',
       schema: getProductByKeywordSchema,
     }),
 
