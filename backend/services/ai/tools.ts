@@ -426,10 +426,9 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     updateOrderInfo: tool(updateOrderInfoExecute, {
       name: 'updateOrderInfo',
-      description: `Update an existing order for the current customer on this channel. Ask the user for the Order ID and the fields to update:
+      description: `Update an existing order for the current customer on this channel. Ask the user for the Order ID or you may find in previous chats and the fields to update:
         - orderStatus: New status ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED').
-        - shippingAddress (string): New shipping address.
-        - billingAddress (string): New billing address.`,
+        - shippingAddress (string): New shipping address.`,
       schema: updateOrderInfoSchema,
     }),
 

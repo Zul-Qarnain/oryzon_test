@@ -32,6 +32,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeywordWithMaxPrice,
     getProductByKeywordWithMinPrice,
     createOrder,
+    updateOrderInfo,
     replyUser
   } = getAITools(customerId, connectedPageID, businessId,address);
 
@@ -55,6 +56,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     createProduct,
     getProductByKeyword,
     createOrder,
+    updateOrderInfo,
     replyUser
 
   ], 
@@ -79,6 +81,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     createProduct,
     getProductByKeyword,
     createOrder,
+    updateOrderInfo,
     replyUser
   };
 
