@@ -176,6 +176,8 @@ export async function POST(request: NextRequest): Promise<Response> {
                             contentType: 'TEXT',
                             platformMessageId: platformMessageId, // Include platformMessageId if needed
                         };
+                        await messagingClient.markSeen(messageSenderPsid);
+                        await messagingClient.toggleTyping(messageSenderPsid, true);
                         const lastMsgs = await chatsService.handleNewMessage(
                             messageContent,
                             chat.chatId,
@@ -194,6 +196,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
                                 const content = typeof AIResponse === 'string' ? AIResponse : JSON.stringify(AIResponse);
                                 await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                await messagingClient.toggleTyping(messageSenderPsid, false);
                                 await chatsService.handleNewMessage(
                                     { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
                                     chat.chatId,
@@ -208,6 +211,8 @@ export async function POST(request: NextRequest): Promise<Response> {
                         console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
                         try {
                             await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
+                            await messagingClient.toggleTyping(messageSenderPsid, false);
+
                             return response;
                         } catch (replyError) {
                             console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
@@ -220,6 +225,8 @@ export async function POST(request: NextRequest): Promise<Response> {
                             messageSenderPsid,
                             `Received a message of a type we don't fully support yet.`
                         );
+                        await messagingClient.toggleTyping(messageSenderPsid, false);
+
                         return response;
                     } catch (error) {
                         console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
