@@ -60,7 +60,7 @@ const OrderItemSchemaForTool = z.object({
   currencyAtPurchase: z.string().length(3).describe("Currency of the priceAtPurchase (e.g., \"USD\").")
 });
 
-export const getAITools = (customerId: string, connectedPageID: string, businessId: string,address:string) => {
+export const getAITools = (customerId: string, connectedPageID: string, businessId: string,address:string, replyUserFn: (message: string) => Promise<void>, replyUserWithProductImageAndInfoFn: (productImageURL: string, productInfo: string) => Promise<void>) => {
   // --- Schemas ---
   const getProductByIdSchema = z.object({
     shortId: z.string().describe('The short ID of the product to retrieve.'),
@@ -455,13 +455,25 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       schema: getProductByKeywordWithMaxPriceSchema,
     }),
 
-    replyUser: tool(({msg} ) => { console.log(msg)}, {
+    replyUser: tool(async ({msg} ) => { await replyUserFn(msg); console.log(msg); }, {
       name: 'replyUser',
       description:'reply to user using msg',
       schema:z.object({
     msg: z.string().describe('The message to reply')
       }),
     }),
+
+    replyUserWithProductImageAndInfo: tool(async ({productImage, productInfo} ) => { await replyUserWithProductImageAndInfoFn(productImage, productInfo); console.log(productImage, productInfo); }, {
+      name: 'replyUserWithProductImageAndInfo',
+      description:'reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
+      schema:z.object({
+        productImage: z.string().describe('The URL of the product image'),
+        productInfo: z.string().describe('Information about the product')
+      }),
+    }),
+
+
+
 
     getProductByKeywordWithMinPrice: tool(getProductByKeywordWithMinPriceExecute, {
       name: 'getProductByKeywordWithMinPrice',

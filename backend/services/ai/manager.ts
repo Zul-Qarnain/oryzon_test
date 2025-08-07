@@ -7,7 +7,7 @@ import { ChatGoogle } from "@langchain/google-gauth";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, AIMessage, ToolMessage, SystemMessage } from '@langchain/core/messages';
 
-export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, address: string, log: (message: string) => void) => {
+export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, address: string, replyUserFn: (message: string) => Promise<void>, replyUserWithProductImageAndInfoFn: (productImageURL: string, productInfo: string) => Promise<void>, log: (message: string) => void) => {
 
   const messages: (HumanMessage | AIMessage | ToolMessage | SystemMessage)[] = []
   let totalOutPutToken = 0;
@@ -33,8 +33,9 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeywordWithMinPrice,
     createOrder,
     updateOrderInfo,
-    replyUser
-  } = getAITools(customerId, connectedPageID, businessId,address);
+    replyUser,
+    replyUserWithProductImageAndInfo
+  } = getAITools(customerId, connectedPageID, businessId, address, replyUserFn, replyUserWithProductImageAndInfoFn);
 
   log("Before calling AI, last 3 messages with sender: ");
   const last3Messages = messages.slice(-3);
@@ -57,10 +58,10 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeyword,
     createOrder,
     updateOrderInfo,
-    replyUser
-
-  ], 
-  { tool_choice: "any" }
+    replyUser,
+    replyUserWithProductImageAndInfo
+  ],
+    { tool_choice: "any" }
   );
 
   const aiMessagex = await llmWithTools.invoke(messages);
@@ -82,7 +83,8 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeyword,
     createOrder,
     updateOrderInfo,
-    replyUser
+    replyUser,
+    replyUserWithProductImageAndInfo
   };
 
   async function processMsg(aiMessage: AIMessage) {
@@ -101,12 +103,12 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
 
         const toolName = toolCall.name as keyof typeof toolsByName;
         const selectedTool = toolsByName[toolName];
-        if (toolName == 'replyUser') {
-          log(`Tool name is 'replyUser', returning message: ${toolCall.args?.msg}`);
-          return toolCall!.args!.msg;
+        // if (toolName == 'replyUser') {
+        //   log(`Tool name is 'replyUser', returning message: ${toolCall.args?.msg}`);
+        //   return toolCall!.args!.msg;
 
 
-        }
+        // }
         if (selectedTool) {
           try {
             log(`Invoking tool: ${toolName} with args: ${JSON.stringify(toolCall.args)}`);
@@ -118,6 +120,11 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
             const toolResultData = await toolFn.invoke(toolCall.args);
             log(typeof toolResultData === 'string' ? toolResultData : JSON.stringify(toolResultData));
             // Construct ToolMessage correctly for LangChain
+            if (toolName == 'replyUser' || toolName == 'replyUserWithProductImageAndInfo') {
+              log(`Tool name is 'replyUser', returning message: ${toolCall.args?.msg}`);
+              return "";
+            }
+
             messages.push(new ToolMessage({
               content: typeof toolResultData === 'string' ? toolResultData : JSON.stringify(toolResultData),
               tool_call_id: toolCall.id, // Use toolCall.id from the AI's tool_call object

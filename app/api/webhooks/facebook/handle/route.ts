@@ -182,6 +182,28 @@ export async function POST(request: NextRequest): Promise<Response> {
                             messageContent,
                             chat.chatId,
                         );
+                        
+                        const replyUserFn = async (msg: unknown) => {
+                            const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                            await messagingClient.sendTextMessage(messageSenderPsid, content);
+                            await messagingClient.toggleTyping(messageSenderPsid, false);
+                            await chatsService.handleNewMessage(
+                                { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                chat.chatId,
+                            );
+                        }
+
+                        const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
+                            const content =  productInfo
+                            await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
+                            await messagingClient.sendTextMessage(messageSenderPsid, content);
+                            await messagingClient.toggleTyping(messageSenderPsid, false);
+                            await chatsService.handleNewMessage(
+                                { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                chat.chatId,
+                            );
+                        }
+
                         const AIResponse = await executeAgent(
                             lastMsgs,
                             internalCustomerId,
@@ -189,72 +211,58 @@ export async function POST(request: NextRequest): Promise<Response> {
                             channel.business?.description || null,
                             channel.business!.businessId,
                             customer.address || "",
+                            replyUserFn,
+                            replyUserWithProductImageAndInfoFn,
                             (ms) => console.log(ms) // Log function to capture messages
                         );
 
-                        if (AIResponse) {
+                        } catch (error) {
+                            console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
                             try {
-
-                                const content = typeof AIResponse === 'string' ? AIResponse : JSON.stringify(AIResponse);
-                                await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
                                 await messagingClient.toggleTyping(messageSenderPsid, false);
-                                await chatsService.handleNewMessage(
-                                    { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
-                                    chat.chatId,
-                                );
 
                                 return response;
                             } catch (replyError) {
-                                console.error(`Failed to send AI response to ${messageSenderPsid}:`, replyError);
+                                console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
                             }
                         }
-                    } catch (error) {
-                        console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
+                    } else {
+                        console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.message);
                         try {
-                            await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
+                            await messagingClient.sendTextMessage(
+                                messageSenderPsid,
+                                `Received a message of a type we don't fully support yet.`
+                            );
                             await messagingClient.toggleTyping(messageSenderPsid, false);
 
                             return response;
-                        } catch (replyError) {
-                            console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
+                        } catch (error) {
+                            console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
                         }
                     }
-                } else {
-                    console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.message);
-                    try {
-                        await messagingClient.sendTextMessage(
-                            messageSenderPsid,
-                            `Received a message of a type we don't fully support yet.`
-                        );
-                        await messagingClient.toggleTyping(messageSenderPsid, false);
 
-                        return response;
-                    } catch (error) {
-                        console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
-                    }
+                    //}
+
+
+
+
+
+
+
+
+
+
+
                 }
-
-                //}
-
-
-
-
-
-
-
-
-
-
 
             }
 
+            return response;
+
+
+        } catch (error) {
+            console.error('Error handling message:', error);
+            return new Response('Internal Server Error', { status: 500 });
         }
-
-        return response;
-
-
-    } catch (error) {
-        console.error('Error handling message:', error);
-        return new Response('Internal Server Error', { status: 500 });
     }
-}
