@@ -24,7 +24,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   }
 
   const {
-    getProductById,
+    getProductByShortTag,
     getProductByImageUrl,
     calculator,
     createProduct,
@@ -51,7 +51,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   });
 
   const llmWithTools = model.bindTools([
-    getProductById,
+    getProductByShortTag,
     getProductByImageUrl,
     calculator,
     createProduct,
@@ -76,7 +76,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   messages.push(aiMessagex);
 
   const toolsByName = {
-    getProductById,
+    getProductByShortTag,
     getProductByImageUrl,
     calculator,
     createProduct,

@@ -366,7 +366,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
   // --- Tools Definition ---
   const tools = {
-    getProductById: tool(getProductByIdExecute, {
+    getProductByShortTag: tool(getProductByIdExecute, {
       name: 'getProductByShortTag',
       description: 'Get detailed information about a specific product by its short tag. Ask the user for the Product Short Tag. Carefull it is not the product id , it is product short tag.',
       schema: getProductByIdSchema,
