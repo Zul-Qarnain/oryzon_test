@@ -457,7 +457,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     replyUser: tool(async ({msg} ) => { await replyUserFn(msg); console.log(msg); }, {
       name: 'replyUser',
-      description:'reply to user using msg',
+      description:'reply to user using msg. If you dont have any image link and just want to send simple text message to user, use this tool',
       schema:z.object({
     msg: z.string().describe('The message to reply')
       }),
@@ -465,7 +465,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     replyUserWithProductImageAndInfo: tool(async ({productImage, productInfo} ) => { await replyUserWithProductImageAndInfoFn(productImage, productInfo); console.log(productImage, productInfo); }, {
       name: 'replyUserWithProductImageAndInfo',
-      description:'reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
+      description:'IF YOU FIND imageUrl in product info you must use this tool to reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
       schema:z.object({
         productImage: z.string().describe('The URL of the product image'),
         productInfo: z.string().describe('Information about the product')
