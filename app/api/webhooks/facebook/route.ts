@@ -241,13 +241,22 @@ export async function POST(request: NextRequest): Promise<Response> {
         //     }
 
         // }
-        fetch(process.env.NEXT_PUBLIC_BASE_URL + '/api/webhooks/facebook/handle', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        });
+        
+        // Fire-and-forget fetch - trigger handle endpoint without waiting
+        setTimeout(() => {
+            fetch(process.env.NEXT_PUBLIC_BASE_URL + '/api/webhooks/facebook/handle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(20000) // 20 second timeout
+            }).catch(error => {
+                // Ignore all errors including timeouts - this is fire-and-forget
+                console.log('Background fetch completed (errors ignored)');
+            });
+        }, 1000);
+        
         return response;
 
 

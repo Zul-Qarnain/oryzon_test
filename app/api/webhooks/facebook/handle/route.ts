@@ -37,7 +37,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         const response = new Response('EVENT_RECEIVED', { status: 200 });
 
         for (const message of messagesFB) {
-            console.log("loll recip sender")
+            console.log(" recip sender")
             console.log(message.recipient.id)
             console.log(message.sender.id)
             const jsonString = JSON.stringify(message);
