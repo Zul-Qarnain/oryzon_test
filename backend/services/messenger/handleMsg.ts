@@ -142,28 +142,41 @@ export async function handleNewMessageFromPlatform(
                 messageContent,
                 chat.chatId,
             );
-            const AIResponse = await executeAgent(
-                lastMsgs,
-                internalCustomerId,
-                channel.platformSpecificId,
-                channel.business?.description || null,
-                channel.business!.businessId,
-                customer.address || '',
-                (message: string) => console.log(`AI Log: ${message}`) // Replace with your logging function
-            );
-            if (AIResponse) {
-                try {
-                    
-                    const content = typeof AIResponse === 'string' ? AIResponse : JSON.stringify(AIResponse);
-                    await messagingClient.sendTextMessage(messageSenderPsid, content);
-                    await chatsService.handleNewMessage(
-                        { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
-                        chat.chatId,
-                    );
-                } catch (replyError) {
-                    console.error(`Failed to send AI response to ${messageSenderPsid}:`, replyError);
-                }
-            }
+
+              const replyUserFn = async (msg: unknown) => {
+                                        const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                                        await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                        await messagingClient.toggleTyping(messageSenderPsid, false);
+                                        await chatsService.handleNewMessage(
+                                            { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                            chat.chatId,
+                                        );
+                                    }
+            
+                                    const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
+                                        const content =  productInfo
+                                        await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
+                                        await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                        await messagingClient.toggleTyping(messageSenderPsid, false);
+                                        await chatsService.handleNewMessage(
+                                            { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                            chat.chatId,
+                                        );
+                                    }
+            
+                                    const AIResponse = await executeAgent(
+                                        lastMsgs,
+                                        internalCustomerId,
+                                        channel.channelId,
+                                        channel.business?.description || null,
+                                        channel.business!.businessId,
+                                        customer.address || "",
+                                        replyUserFn,
+                                        replyUserWithProductImageAndInfoFn,
+                                        (ms) => console.log(ms) // Log function to capture messages
+                                    );
+            
+       
         } catch (error) {
             console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
             try {
