@@ -60,7 +60,7 @@ const OrderItemSchemaForTool = z.object({
   currencyAtPurchase: z.string().length(3).describe("Currency of the priceAtPurchase (e.g., \"USD\").")
 });
 
-export const getAITools = (customerId: string, connectedPageID: string, businessId: string) => {
+export const getAITools = (customerId: string, connectedPageID: string, businessId: string,address:string) => {
   // --- Schemas ---
   const getProductByIdSchema = z.object({
     shortId: z.string().describe('The short ID of the product to retrieve.'),
@@ -254,10 +254,20 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       customerId,
       channelId: connectedPageID,
       businessId,
-      shippingAddress: orderParams.shippingAddress || '',
+      shippingAddress: orderParams.shippingAddress || address, // Use the provided address or fallback to the default address
     };
     const newOrder = await ordersService.createOrder(orderData);
-    return formatObjectToString(newOrder, 'Create Order Result');
+    let result = "Create Order Result: \n"
+    result += `Order ID: ${newOrder?.orderId}\n`
+    result += `Order Status: ${newOrder?.orderStatus}\n`
+    for (const item of newOrder?.orderItems || []) {
+      result += `Product Name: ${item.product?.name}\n`
+      result += `Quantity: ${item.quantity}\n`
+      result += `Price: ${item.priceAtPurchase}\n`
+    }
+    result += `Total Amount: ${newOrder?.totalAmount}\n`
+    result += `Shipping Address: ${newOrder?.shippingAddress}\n`
+    return result;
   };
 
   const updateOrderInfoExecute = async ({ orderId, ...updateData }: z.infer<typeof updateOrderInfoSchema>) => {
@@ -401,17 +411,16 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     createOrder: tool(createOrderExecute, {
       name: 'createOrder',
-      description: `Create a new order for the current customer and channel. Ask the user for the following details:
+      description: `Create a new order for the current customer and channel. You need the following details to make an order. If you don't have those details, then make a product search with id or keyward which you might get from previous chat messages. Then use those information to fill the order details.
         - orderItems (array of objects): Each object needs:
             - productId (string, required): ID of the product.
-            - quantity (number, required, min 1): Quantity of the product.
-            - priceAtPurchase (string, required): Price of one unit at purchase (e.g., "29.99").
-            - currencyAtPurchase (string, required, 3 letters): Currency of priceAtPurchase (e.g., "USD").
+            - quantity (number, required, min 1): Quantity of the product.Ask the user for the quantity. Be carefull it should not cross the available stock.
+            - priceAtPurchase (string, required): Price of one unit at purchase (e.g., "29.99").You need to find from prevous chat where you might told the user or make product search to get the price.
+            - currencyAtPurchase (string, required, 3 letters): Currency of priceAtPurchase (e.g., "USD").Default is BDT. But always ask the user if they want to use a different currency.
         - totalAmount (string, required): Total amount for the order (e.g., "100.50").
         - currency (string, required, 3 letters): Currency code for the totalAmount (e.g., "USD").
         - orderStatus (optional, default 'PENDING'): Can be 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED'.
-        - shippingAddress (string, optional): Full shipping address.
-        - billingAddress (string, optional): Full billing address.`,
+        - shippingAddress (string): ${ address == "" ? 'You must ask for the shipping address to the user. It is mendatory to create the order' : 'User already provided the shipping address in past. The address is ' + address + ' . Show this address to user and politly ask if he wants to change it? If not go with it or if he provide use the updated one' }`,
       schema: createOrderSchema,
     }),
 
@@ -426,7 +435,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
     getProductByKeyword: tool(getProductByKeywordExecute, {
       name: 'getProductByKeyword',
-      description: 'Search for products by a keyword in their name and description for the current business. Ask the user for the keyword. Optionally, specify limit and offset for pagination.',
+      description: 'Search for products by a keyword in their name and description for the current business. Ask the user for the keyword. Optionally, specify limit and offset for pagination. Must include product id in the reply.',
       schema: getProductByKeywordSchema,
     }),
 

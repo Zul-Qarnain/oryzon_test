@@ -68,6 +68,7 @@ export const customers = pgTable('customers', {
   channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
   platformCustomerId: text('platform_customer_id').notNull(),
   fullName: text('full_name'),
+  address: text('address').default(""),
   profilePictureUrl: text('profile_picture_url'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),

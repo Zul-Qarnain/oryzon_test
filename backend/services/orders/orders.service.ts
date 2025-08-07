@@ -12,7 +12,7 @@ import {
   OrderWithIncludes,
   OrderItem,
 } from './orders.types';
-import { and, count, eq, ilike, inArray, desc, gte, lte } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, desc, gte, lte , sql} from 'drizzle-orm';
 
 export class OrdersService {
   constructor() {}
@@ -51,6 +51,12 @@ export class OrdersService {
 
       const newOrderItems = await db.insert(orderItems).values(orderItemsToInsert).returning();
 
+      await db
+        .update(customers)
+        .set({
+          address: sql`CASE WHEN ${customers.address} != ${data.shippingAddress} THEN ${data.shippingAddress} ELSE ${customers.address} END`, // Update address only if it's empty
+        })
+        .where(eq(customers.customerId, data.customerId));
       // Fetch the full order with items to return
       // This is a simplified re-fetch. In a real scenario, you might construct the object.
       const fullOrder = await db.query.orders.findFirst({

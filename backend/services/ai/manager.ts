@@ -7,7 +7,7 @@ import { ChatGoogle } from "@langchain/google-gauth";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, AIMessage, ToolMessage, SystemMessage } from '@langchain/core/messages';
 
-export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, log: (message: string) => void) => {
+export const executeAgent = async (msgs: typeof messages.$inferSelect[], customerId: string, connectedPageID: string, businessDescription: string | null, businessId: string, address: string, log: (message: string) => void) => {
 
   const messages: (HumanMessage | AIMessage | ToolMessage | SystemMessage)[] = []
   let totalOutPutToken = 0;
@@ -33,7 +33,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
     getProductByKeywordWithMinPrice,
     createOrder,
     replyUser
-  } = getAITools(customerId, connectedPageID, businessId);
+  } = getAITools(customerId, connectedPageID, businessId,address);
 
   log("Before calling AI, last 3 messages with sender: ");
   const last3Messages = messages.slice(-3);

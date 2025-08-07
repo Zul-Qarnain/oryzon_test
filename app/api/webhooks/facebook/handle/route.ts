@@ -188,6 +188,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                             channel.channelId,
                             channel.business?.description || null,
                             channel.business!.businessId,
+                            customer.address || "",
                             (ms) => console.log(ms) // Log function to capture messages
                         );
 
