@@ -17,7 +17,7 @@ curl -X POST http://localhost:3000/api/webhooks/facebook \
             "timestamp": 1234567890123,
             "message": {
               "mid": "mid.$cAABa-abc123",
-              "text": "make a order for shirt"
+              "text": "tumi address chara order kivabe korla ? ata ki tumar vul na ?"
             }
           }
         ]
