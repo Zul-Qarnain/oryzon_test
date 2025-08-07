@@ -148,6 +148,7 @@ export async function handleNewMessageFromPlatform(
                 channel.platformSpecificId,
                 channel.business?.description || null,
                 channel.business!.businessId,
+                customer.address || '',
                 (message: string) => console.log(`AI Log: ${message}`) // Replace with your logging function
             );
             if (AIResponse) {
