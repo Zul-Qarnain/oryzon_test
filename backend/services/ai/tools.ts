@@ -62,8 +62,8 @@ const OrderItemSchemaForTool = z.object({
 
 export const getAITools = (customerId: string, connectedPageID: string, businessId: string,address:string, replyUserFn: (message: string) => Promise<void>, replyUserWithProductImageAndInfoFn: (productImageURL: string, productInfo: string) => Promise<void>) => {
   // --- Schemas ---
-  const getProductByIdSchema = z.object({
-    shortId: z.string().describe('The short ID of the product to retrieve.'),
+  const getProductByShortTagSchema = z.object({
+    shortTag: z.string().describe('The short tag of the product to retrieve.'),
   });
 
   const calculatorSchema = z.object({
@@ -138,11 +138,11 @@ export const getAITools = (customerId: string, connectedPageID: string, business
   });
 
   // --- Tool Implementations ---
-  const getProductByIdExecute = async ({ shortId }: z.infer<typeof getProductByIdSchema>) => {
-    console.log(`getProductById is being called with params: ${JSON.stringify({ shortId })} and businessId: ${businessId}`);
+  const getProductByShortTagExecute = async ({ shortTag }: z.infer<typeof getProductByShortTagSchema>) => {
+    console.log(`getProductByShortTag is being called with params: ${JSON.stringify({ shortTag })} and businessId: ${businessId}`);
     try {
       const productsResult = await productsService.getAllProducts({
-        filter: { shortId:shortId, businessId:businessId },
+        filter: { shortId: shortTag, businessId:   businessId },
         limit: 1,
         include: {}
       });
@@ -153,7 +153,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       }
       return formatObjectToString(product,"Product Info"); // Return product details as a formatted string
     } catch (error) {
-      console.error(`Error fetching product by ID ${shortId}:`, error);
+      console.error(`Error fetching product by short tag ${shortTag}:`, error);
       return formatObjectToString({
         error: `Could not retrieve product: ${(error as Error).message}`
       }, 'Product Information');
@@ -366,10 +366,10 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
   // --- Tools Definition ---
   const tools = {
-    getProductByShortTag: tool(getProductByIdExecute, {
+    getProductByShortTag: tool(getProductByShortTagExecute, {
       name: 'getProductByShortTag',
       description: 'Get detailed information about a specific product by its short tag. Ask the user for the Product Short Tag. Carefull it is not the product id , it is product short tag.',
-      schema: getProductByIdSchema,
+      schema: getProductByShortTagSchema,
     }),
 
     calculator: tool(calculatorExecute, {
