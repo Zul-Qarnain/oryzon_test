@@ -297,8 +297,19 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       if (!productsResult.data || productsResult.data.length === 0) {
         return formatObjectToString({ info: 'No products found matching the keyword for this business.' }, 'Product Search Result');
       }
-      // Return product details as a formatted string or JSON string
-      return formatObjectToString(productsResult.data[0],"Product Info")
+      let result = '';
+      if (productsResult.data.length > 1) {
+        for (const product of productsResult.data) {
+          result += formatObjectToString(product, 'Product Info') + '\n---\n';
+        }
+      } else {
+        result = formatObjectToString(productsResult.data[0], 'Product Info');
+      }
+      console.log(`Returning product details for keyword '${keyword}': ${result}`);
+      return result;
+
+
+      
     } catch (error) {
       console.error(`Error fetching products by keyword '${keyword}':`, error);
       return formatObjectToString({

@@ -3,7 +3,8 @@
 
 import fetch from 'node-fetch';
 
-const messageText = process.argv[2];
+const messageText = process.argv.slice(2).join(" ");
+console.log("Message text:", messageText);
 
 if (!messageText) {
   console.error('Usage: bun facebookWebhook.js "your message text here"');

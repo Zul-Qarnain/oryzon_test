@@ -14,7 +14,7 @@ import {
 import { and, or, count, eq, ilike, inArray, gte, lte, desc } from 'drizzle-orm'; // Added 'or'
 
 export class ProductsService {
-  constructor() {}
+  constructor() { }
 
   async createProduct(data: CreateProductData): Promise<Product> {
     const newProductData: NewProduct = {
@@ -42,12 +42,12 @@ export class ProductsService {
         userViaProviderId: options?.include?.userViaProviderId ? true : undefined, // For denormalized user
         orderItems: options?.include?.orderItems
           ? {
-              limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
-              // offset is not directly supported in nested 'with' like this for eager loading
-              with: {
-                order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
-              },
-            }
+            limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
+            // offset is not directly supported in nested 'with' like this for eager loading
+            with: {
+              order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
+            },
+          }
           : undefined,
       }
     });
@@ -107,12 +107,12 @@ export class ProductsService {
         userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         orderItems: options?.include?.orderItems
           ? {
-              limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
-              // offset is not directly supported in nested 'with' like this for eager loading
-              with: {
-                order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
-              },
-            }
+            limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
+            // offset is not directly supported in nested 'with' like this for eager loading
+            with: {
+              order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
+            },
+          }
           : undefined,
       },
       orderBy: [desc(products.createdAt)] // Default order
@@ -121,7 +121,7 @@ export class ProductsService {
     const totalQuery = db.select({ value: count() }).from(products).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([productsQuery, totalQuery]);
-    
+
     return { data, total: totalResult[0]?.value ?? 0 };
   }
 
@@ -145,7 +145,7 @@ export class ProductsService {
       .update(products)
       .set({ ...data, updatedAt: new Date() })
       .where(inArray(products.productId, filter.ids as string[]));
-      
+
     return { count: result.rowCount ?? 0 }; // rowCount is specific to pg driver, may need adjustment for Neon HTTP
   }
 
@@ -168,11 +168,17 @@ export class ProductsService {
 
     const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
-
-    // Keyword search condition
-    if (keyword && keyword.trim() !== '') {
-      conditions.push(or(ilike(products.name, `%${keyword}%`), ilike(products.description, `%${keyword}%`)));
+    // separate keyward by 
+    const keywordParts = keyword ? keyword.split(' ') : [];
+    for (const part of keywordParts) {
+      if (part.trim() !== '') {
+        conditions.push(or(ilike(products.name, `%${part}%`), ilike(products.description, `%${part}%`)));
+      }
     }
+    // Keyword search condition
+    // if (keyword && keyword.trim() !== '') {
+    //   conditions.push(or(ilike(products.name, `%${keyword}%`), ilike(products.description, `%${keyword}%`)));
+    // }
 
     // Additional filters from options
     if (filter?.name) { // This could be an additional filter if needed, or could be part of keyword logic
@@ -218,11 +224,11 @@ export class ProductsService {
         userViaProviderId: options?.include?.userViaProviderId ? true : undefined,
         orderItems: options?.include?.orderItems
           ? {
-              limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
-              with: {
-                order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
-              },
-            }
+            limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
+            with: {
+              order: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.order ? true : undefined,
+            },
+          }
           : undefined,
       },
       orderBy: [desc(products.createdAt)] // Default order
@@ -231,7 +237,7 @@ export class ProductsService {
     const totalQuery = db.select({ value: count() }).from(products).where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const [data, totalResult] = await Promise.all([productsQuery, totalQuery]);
-    
+
     return { data, total: totalResult[0]?.value ?? 0 };
   }
 }
