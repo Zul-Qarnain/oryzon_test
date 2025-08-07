@@ -463,12 +463,21 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       }),
     }),
 
-    replyUserWithProductImageAndInfo: tool(async ({productImage, productInfo} ) => { await replyUserWithProductImageAndInfoFn(productImage, productInfo); console.log(productImage, productInfo); }, {
+    replyUserWithProductImageAndInfo: tool(async ({products} ) => { 
+      for (const product of products) {
+        await replyUserWithProductImageAndInfoFn(product.productImage, product.productInfo); 
+        console.log(product.productImage, product.productInfo);
+      }
+    }, {
       name: 'replyUserWithProductImageAndInfo',
       description:'IF YOU FIND imageUrl in product info you must use this tool to reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
-      schema:z.object({
-        productImage: z.string().describe('The URL of the product image'),
-        productInfo: z.string().describe('Information about the product')
+      schema: z.object({
+        products: z.array(
+          z.object({
+            productImage: z.string().describe('The URL of the product image'),
+            productInfo: z.string().describe('Information about the product')
+          })
+        ).describe('Array of products containing each product image and information')
       }),
     }),
 
