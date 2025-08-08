@@ -7,6 +7,7 @@ import { useUserContext } from '@/app/lib/context/UserContext';
 import { Loader2, Save, AlertCircle, Edit3 } from 'lucide-react';
 import { UpdateProductData, Product } from '@/backend/services/products/products.types';
 import Link from 'next/link';
+import ImageUpload from '@/app/components/ImageUpload';
 
 const ProductUpdatePage: React.FC = () => {
   const params = useParams();
@@ -20,7 +21,9 @@ const ProductUpdatePage: React.FC = () => {
     fetchProduct, 
     updateProduct, 
     product_loading, 
-    error_product 
+    error_product,
+    uploadImageCallback,
+    image_uploading
   } = useProductContext();
 
   const [name, setName] = useState('');
@@ -28,6 +31,8 @@ const ProductUpdatePage: React.FC = () => {
   const [price, setPrice] = useState<string>(''); // Changed type to string
   const [currency, setCurrency] = useState('USD');
   const [isAvailable, setIsAvailable] = useState(true);
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageId, setImageId] = useState<string | null>(null);
   // Add other product fields as needed, e.g., SKU, stock, images
 
   const [isSaving, setIsSaving] = useState(false);
@@ -47,6 +52,8 @@ const ProductUpdatePage: React.FC = () => {
       setPrice(product.price || ''); // Changed to handle string | null from product.price
       setCurrency(product.currency || 'USD');
       setIsAvailable(product.isAvailable === null ? true : product.isAvailable);
+      setImageUrl(product.imageUrl || '');
+      setImageId(product.imageId || null);
     }
   }, [product]);
 
@@ -63,6 +70,8 @@ const ProductUpdatePage: React.FC = () => {
       price: price === '' ? undefined : price, // Send undefined if price is empty, to match string | undefined
       currency,
       isAvailable,
+      imageUrl: imageUrl || undefined,
+      imageId: imageId || undefined,
     };
     
     const response = await updateProduct(productId, payload);
@@ -169,6 +178,17 @@ const ProductUpdatePage: React.FC = () => {
             placeholder="Enter product description"
           />
         </div>
+
+        <ImageUpload
+          currentImageUrl={imageUrl}
+          onImageUpload={uploadImageCallback}
+          onImageUrlChange={(url, id) => {
+            setImageUrl(url || '');
+            setImageId(id);
+          }}
+          isUploading={image_uploading}
+          disabled={isSaving || product_loading}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="mb-6">
@@ -207,15 +227,15 @@ const ProductUpdatePage: React.FC = () => {
 
         <button
           type="submit"
-          disabled={isSaving || product_loading}
+          disabled={isSaving || product_loading || image_uploading}
           className="w-full md:w-auto px-6 py-3 bg-[var(--color-accent-primary)] text-white font-semibold rounded-md hover:bg-opacity-80 transition-colors disabled:opacity-50 flex items-center justify-center"
         >
-          {isSaving ? (
+          {(isSaving || image_uploading) ? (
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
           ) : (
             <Save className="h-5 w-5 mr-2" />
           )}
-          Save Changes
+          {isSaving ? 'Saving Changes...' : image_uploading ? 'Uploading...' : 'Save Changes'}
         </button>
       </form>
     </>

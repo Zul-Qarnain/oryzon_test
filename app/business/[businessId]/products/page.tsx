@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useProductContext } from '@/app/lib/context/ProductContext';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
@@ -40,6 +42,24 @@ const BusinessProductsListPage: React.FC = () => {
     return (
       <div className="bg-[var(--bg-card)] p-5 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 ease-in-out flex flex-col justify-between">
         <div>
+          {/* Product Image */}
+          {product.imageUrl ? (
+            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-[var(--bg-badge)]">
+              <img
+                src={product.imageUrl}
+                alt={product.name || 'Product image'}
+                width={300}
+                height={200}
+                className="w-full h-full object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-48 mb-4 rounded-lg bg-[var(--bg-badge)] flex items-center justify-center">
+              <Package className="h-16 w-16 text-[var(--icon-accent-primary)] opacity-50" />
+            </div>
+          )}
+          
           <div className="flex items-center mb-3">
             <Package className="h-7 w-7 text-[var(--icon-accent-primary)] mr-3" />
             <h3 className="text-xl font-semibold text-[var(--text-on-dark-primary)] truncate" title={product.name || `Product ID: ${product.productId}`}>

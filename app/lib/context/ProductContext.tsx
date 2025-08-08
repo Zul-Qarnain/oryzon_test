@@ -4,6 +4,8 @@ import { Product, ProductWithIncludes, CreateProductData } from "@/backend/servi
 import type { ProductFilterOptions as ProductFilter } from "@/backend/services/products/products.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
+import { storage } from "@/app/lib/firebase";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 export interface PaginationOptions {
   limit?: number;
@@ -16,11 +18,13 @@ export interface ProductContextType {
   total_product: number;
   product_loading: boolean;
   error_product: string | null;
+  image_uploading: boolean;
   fetchProduct: (productId: string, options?: { include?: string }) => Promise<ApiResponse<ProductWithIncludes>>;
   fetchProducts: (options?: { filter?: ProductFilter; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ProductWithIncludes[]; total: number }>>;
   createProduct: (data: Omit<CreateProductData, 'providerUserId'> & { businessId: string }) => Promise<ApiResponse<ProductWithIncludes>>; // Updated createProduct data type
   updateProduct: (productId: string, data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
   deleteProduct: (productId: string) => Promise<ApiResponse<null>>;
+  uploadImageCallback: (file: File | string, productId?: string) => Promise<{ url: string; imageId: string } | null>;
   cleanError_Product: () => void;
 }
 
@@ -33,6 +37,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const [products, setProducts] = useState<ProductWithIncludes[]>([]);
   const [total_product, setTotalProduct] = useState(0);
   const [product_loading, setProductLoading] = useState(false);
+  const [image_uploading, setImageUploading] = useState(false);
   const [error_product, setErrorProduct] = useState<string | null>(null);
 
   const fetchProduct = useCallback(async (productId: string, options?: { include?: string }): Promise<ApiResponse<ProductWithIncludes>> => {
@@ -149,6 +154,46 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
 
   const cleanError_Product = useCallback(() => setErrorProduct(null), []);
 
+  const uploadImageCallback = useCallback(async (file: File | string, productId?: string): Promise<{ url: string; imageId: string } | null> => {
+    // If it's a string (URL), just return it with a generated imageId
+    if (typeof file === 'string') {
+      const imageId = `url_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      return { url: file, imageId };
+    }
+    
+    // If it's a File, upload it to Firebase Storage
+    if (!file) return null;
+    
+    setImageUploading(true);
+    setErrorProduct(null);
+    
+    try {
+      // Generate a unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const imageId = `${timestamp}_${randomString}`;
+      const fileName = `${imageId}.${fileExtension}`;
+      
+      // Create storage reference
+      const storageRef = ref(storage, `products/${fileName}`);
+      
+      // Upload file
+      const snapshot = await uploadBytes(storageRef, file);
+      
+      // Get download URL
+      const url = await getDownloadURL(snapshot.ref);
+      
+      setImageUploading(false);
+      return { url, imageId };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setErrorProduct('Failed to upload image. Please try again.');
+      setImageUploading(false);
+      return null;
+    }
+  }, []);
+
   return (
     <ProductContext.Provider
       value={{
@@ -156,12 +201,14 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         products,
         total_product,
         product_loading,
+        image_uploading,
         error_product,
         fetchProduct,
         fetchProducts,
         createProduct,
         updateProduct,
         deleteProduct,
+        uploadImageCallback,
         cleanError_Product,
       }}
     >

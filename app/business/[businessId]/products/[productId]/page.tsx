@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useProductContext } from '@/app/lib/context/ProductContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
 import { Loader2, AlertCircle, Edit3, Package, DollarSign, CheckCircle, XCircle, Info } from 'lucide-react';
@@ -80,6 +81,23 @@ const ProductInfoPage: React.FC = () => {
       </div>
 
       <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg">
+        {/* Product Image Section */}
+        {product.imageUrl && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-[var(--text-on-dark-muted)] mb-3">Product Image</h3>
+            <div className="w-full max-w-md h-64 rounded-lg overflow-hidden bg-[var(--bg-badge)]">
+              <Image
+                src={product.imageUrl}
+                alt={product.name || 'Product image'}
+                width={400}
+                height={300}
+                className="w-full h-full object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <h3 className="text-sm font-medium text-[var(--text-on-dark-muted)]">Product Name</h3>

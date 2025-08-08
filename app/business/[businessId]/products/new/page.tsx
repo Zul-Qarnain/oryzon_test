@@ -7,6 +7,7 @@ import { useUserContext } from '@/app/lib/context/UserContext';
 import { useProductContext } from '@/app/lib/context/ProductContext'; 
 import { Loader2, AlertCircle, ChevronLeft, PackagePlus, Save } from 'lucide-react';
 import { CreateProductData } from '@/backend/services/products/products.types'; 
+import ImageUpload from '@/app/components/ImageUpload'; 
 
 const NewProductPage: React.FC = () => {
   const params = useParams();
@@ -14,7 +15,7 @@ const NewProductPage: React.FC = () => {
   const businessId = params.businessId as string;
 
   const { user_loading, FUser } = useUserContext(); // Correctly get FUser
-  const { createProduct, product_loading, error_product, cleanError_Product } = useProductContext();
+  const { createProduct, product_loading, error_product, cleanError_Product, uploadImageCallback, image_uploading } = useProductContext();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,6 +26,7 @@ const NewProductPage: React.FC = () => {
   const [currency, setCurrency] = useState('USD');
   const [isAvailable, setIsAvailable] = useState(true); 
   const [imageUrl, setImageUrl] = useState(''); // Added for imageUrl from schema
+  const [imageId, setImageId] = useState<string | null>(null); // Added for imageId from schema
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -80,6 +82,7 @@ const NewProductPage: React.FC = () => {
       currency: currency.trim().toUpperCase(),
       isAvailable: isAvailable, 
       imageUrl: imageUrl.trim() || undefined,
+      imageId: imageId || undefined,
       // Defaulting complex fields from CreateProductData that are not in the form yet
        // Assuming 'images' is the correct field name if it exists in CreateProductData, otherwise remove
       // ame assumption
@@ -100,6 +103,7 @@ const NewProductPage: React.FC = () => {
       setCurrency('USD');
       setIsAvailable(true);
       setImageUrl('');
+      setImageId(null);
       setTimeout(() => {
         // TODO: Change to a dedicated products list page if created, e.g., /business/[businessId]/products
         router.push(`/business/${businessId}#products`); 
@@ -202,16 +206,18 @@ const NewProductPage: React.FC = () => {
                 />
             </div>
         </div>
-        
-        <div>
-            <label htmlFor="productImageUrl" className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-1">Image URL</label>
-            <input
-                id="productImageUrl" type="url" placeholder="e.g., https://example.com/image.jpg"
-                value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full p-3 bg-[var(--bg-input)] text-[var(--text-on-dark-primary)] border border-[var(--border-medium)] rounded-md focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] placeholder-[var(--text-on-dark-placeholder)]"
-            />
-        </div>
 
+        <ImageUpload
+          currentImageUrl={imageUrl}
+          onImageUpload={uploadImageCallback}
+          onImageUrlChange={(url, id) => {
+            setImageUrl(url || '');
+            setImageId(id);
+          }}
+          isUploading={image_uploading}
+          disabled={product_loading}
+        />
+        
         <div className="flex items-center mt-4">
             <input
                 id="productIsAvailable"
@@ -228,11 +234,11 @@ const NewProductPage: React.FC = () => {
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={product_loading || user_loading}
+            disabled={product_loading || user_loading || image_uploading}
             className="px-6 py-3 bg-[var(--color-accent-primary)] text-white font-semibold rounded-md hover:bg-opacity-80 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[150px]"
           >
-            {product_loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-            {product_loading ? 'Saving...' : 'Save Product'}
+            {(product_loading || image_uploading) ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
+            {product_loading ? 'Saving...' : image_uploading ? 'Uploading...' : 'Save Product'}
           </button>
         </div>
       </form>
