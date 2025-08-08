@@ -52,7 +52,7 @@ export class ProductsService {
 
       const data = await response.json();
       console.log(typeof data.data[0]?.embedding)
-      return data.data[0]?.embedding || null
+      return (Array.isArray(imageUrl) ? data.data.map((item:{embedding: number[]}) => item.embedding) : data.data[0]?.embedding) || null
     } catch (error) {
       console.error('Error generating image embedding:', error);
       return null;
@@ -208,8 +208,24 @@ export class ProductsService {
   async updateProduct(productId: string, data: UpdateProductData): Promise<Product | null> {
     // businessId is not part of UpdateProductData and should not be updated here.
     // providerUserId can be updated if present in data.
-   
+   const existingProduct = await db.query.products.findFirst({
+     where: eq(products.productId, productId)
+   });
 
+    if (!existingProduct) {
+      throw new Error("Product not found");
+    }
+
+    if( data.imageUrl && data.imageUrl !== existingProduct.imageUrl) {
+      const imageEmbedding = await this.generateImageEmbedding(data.imageUrl, false);
+      //TODO: Handle image embedding storage if needed
+    }
+
+    if ((data.name && data.name !== existingProduct.name) || (data.description && data.description !== existingProduct.description)) {
+
+      const textEmbedding = await this.generateTextEmbedding((data.name || existingProduct.name) + ' ' + (data.description || existingProduct.description), false);
+      //TODO: Handle text embedding storage if needed
+    }
     const [updatedProduct] = await db
       .update(products)
       .set({ ...data, updatedAt: new Date() })
