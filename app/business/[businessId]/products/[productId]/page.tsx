@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect } from 'react';
@@ -86,7 +87,7 @@ const ProductInfoPage: React.FC = () => {
           <div className="mb-6">
             <h3 className="text-sm font-medium text-[var(--text-on-dark-muted)] mb-3">Product Image</h3>
             <div className="w-full max-w-md h-64 rounded-lg overflow-hidden bg-[var(--bg-badge)]">
-              <Image
+              <img
                 src={product.imageUrl}
                 alt={product.name || 'Product image'}
                 width={400}

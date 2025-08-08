@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
+    "@imagekit/javascript": "^5.1.0",
     "@langchain/core": "^0.3.67",
     "@langchain/google-gauth": "^0.2.16",
     "@langchain/google-genai": "^0.2.16",
@@ -23,6 +24,7 @@
     "drizzle-orm": "^0.43.1",
     "fb-messenger-bot-api": "^4.4.0",
     "firebase": "^11.10.0",
+    "imagekit": "^6.0.0",
     "lucide-react": "^0.511.0",
     "next": "15.3.2",
     "react": "^19.1.1",

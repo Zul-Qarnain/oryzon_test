@@ -4,8 +4,8 @@ import { Product, ProductWithIncludes, CreateProductData } from "@/backend/servi
 import type { ProductFilterOptions as ProductFilter } from "@/backend/services/products/products.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
-import { storage } from "@/app/lib/firebase";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import {upload} from '@imagekit/javascript'
+import { uniqueKeyName } from "drizzle-orm/sqlite-core";
 
 export interface PaginationOptions {
   limit?: number;
@@ -45,7 +45,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     setErrorProduct(null);
     const url = `/api/products/${productId}` + (options?.include ? `?include=${options.include}` : "");
     const response = await request<ProductWithIncludes>("GET", url);
-    
+
     if (response.error) {
       setErrorProduct(response.error);
       setProduct(null);
@@ -160,13 +160,13 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       const imageId = `url_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       return { url: file, imageId };
     }
-    
+
     // If it's a File, upload it to Firebase Storage
     if (!file) return null;
-    
+
     setImageUploading(true);
     setErrorProduct(null);
-    
+
     try {
       // Generate a unique filename
       const timestamp = Date.now();
@@ -174,24 +174,39 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageId = `${timestamp}_${randomString}`;
       const fileName = `${imageId}.${fileExtension}`;
-      
+
       // Create storage reference
-      const storageRef = ref(storage, `products/${fileName}`);
-      
-      // Upload file
-      const snapshot = await uploadBytes(storageRef, file);
-      
-      // Get download URL
-      const url = await getDownloadURL(snapshot.ref);
-      
-      setImageUploading(false);
-      return { url, imageId };
+      const credReq = await request<{ token: string; expire: number; signature: string }>("GET", "/api/imagekit");
+      if (credReq.error) {
+        setErrorProduct(credReq.error);
+        setImageUploading(false);
+        return null;
+      } else {
+        const { token, expire, signature } = credReq.result!;
+        const uploadOptions = {
+          file,
+          fileName: fileName,
+          token: token, // Check signature generation section for more details
+          signature: signature,
+          expire: expire,
+          publicKey: "public_LmxIJBzLIeQslPrYnQgTCr00IAc=",
+
+        };
+
+        // Upload the file to imagekit
+        const response = await upload(uploadOptions);
+        console.log("Upload successful:", response);
+        setImageUploading(false);
+        return { url: response.url!, imageId: response.fileId!  };
+
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       setErrorProduct('Failed to upload image. Please try again.');
       setImageUploading(false);
       return null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
