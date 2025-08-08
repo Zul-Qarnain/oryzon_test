@@ -168,17 +168,18 @@ export class ProductsService {
 
     const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
-    // separate keyward by 
-    const keywordParts = keyword ? keyword.split(' ') : [];
+    const keywordConditions = [];
+    
+    // Create keyword conditions - each keyword part can match name OR description
+    const keywordParts = keyword ? keyword.split(' ').filter(part => part.trim() !== '') : [];
     for (const part of keywordParts) {
-      if (part.trim() !== '') {
-        conditions.push(or(ilike(products.name, `%${part}%`), ilike(products.description, `%${part}%`)));
-      }
+      keywordConditions.push(or(ilike(products.name, `%${part}%`), ilike(products.description, `%${part}%`)));
     }
-    // Keyword search condition
-    // if (keyword && keyword.trim() !== '') {
-    //   conditions.push(or(ilike(products.name, `%${keyword}%`), ilike(products.description, `%${keyword}%`)));
-    // }
+    
+    // If we have keyword conditions, combine them with OR (any keyword can match)
+    if (keywordConditions.length > 0) {
+      conditions.push(or(...keywordConditions));
+    }
 
     // Additional filters from options
     if (filter?.name) { // This could be an additional filter if needed, or could be part of keyword logic
@@ -243,3 +244,9 @@ export class ProductsService {
 }
 
 export const productsService = new ProductsService();
+
+
+
+
+/*
+in getProductByKeyword(keyword......) the keyword is string containing different word saparated by space . i want the the function to find any product even at least any of the word matches . like "beauty product" now if any product name or having beauty or "product" or both "beauty product"  match . it also should math several products. r8 now if  beauty matvhes but "product" dont match doesnot give any result i dont like it . improve it */
