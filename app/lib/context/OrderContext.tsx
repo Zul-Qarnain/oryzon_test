@@ -68,6 +68,7 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
       if (options?.include) params.append("include", options.include);
 
       const url = `/api/orders${params.toString() ? `?${params.toString()}` : ""}`;
+      console.log("Fetching orders with URL:", url); // Debugging line
       const response = await request<{ data: OrderWithIncludes[]; total: number }>("GET", url);
 
       if (response.error) {

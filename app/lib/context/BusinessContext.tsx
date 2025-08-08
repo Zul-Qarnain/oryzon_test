@@ -84,6 +84,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       // params.append("providerUserId", FUser.uid); // Or "userId" depending on your API
 
       const url = `/api/businesses${params.toString() ? `?${params.toString()}` : ""}`;
+      console.log("Fetching businesses with URL:", url); // Debugging line
       const response = await request<BusinessWithRelations[]>('GET', url);
 
       if (response.error) {

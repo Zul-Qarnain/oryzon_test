@@ -28,8 +28,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
+    console.log('Request URL:', url.href);
     const userId = url.searchParams.get('userId');
     const providerUserId = url.searchParams.get('providerUserId');
+    console.log(userId, providerUserId);
 
     console.log('Fetching businesses for userId:', userId, 'or providerUserId:', providerUserId);
     // TODO: Implement proper authentication and authorization.

@@ -200,13 +200,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUserLoading(true);
     setErrorUser(null);
     try {
-      let filterParams = `filter[providerUserId]=${firebaseUser.uid}&filter[loginProvider]=${provider}`;
+      let filterParams = `providerUserId=${firebaseUser.uid}&loginProvider=${provider}`;
       if (provider === 'EMAIL' && firebaseUser.email) {
-        filterParams = `filter[email]=${firebaseUser.email}&filter[loginProvider]=EMAIL`;
+        filterParams = `email=${firebaseUser.email}&loginProvider=EMAIL`;
       }
       
       const findResp = await request<{ data: UserWithIncludes[]; total: number }>("GET", `/api/users?${filterParams}`);
-
+      console.log("Find User Response:", findResp);
       let existingUser: UserWithIncludes | null = null;
       if (findResp.result && findResp.result.total > 0 && findResp.result.data[0]) {
         existingUser = findResp.result.data[0];

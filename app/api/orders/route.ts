@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const searchParams = url.searchParams;
     const includeQuery = searchParams.get('include');
     const { limit, offset } = parsePaginationParams(searchParams, 10, 0, 100);
-
+    console.log(includeQuery)
     const businessId = getStringFilterParam(searchParams, 'businessId'); // New filter
     const providerUserId = getStringFilterParam(searchParams, 'providerUserId'); // New filter
     const customerId = getStringFilterParam(searchParams, 'customerId');
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
       includeQuery,
       VALID_ORDER_INCLUDES
     );
+    console.log('Include Options:', includeOptions);
 
     const options: GetAllOrdersOptions = {
       include: includeOptions,

@@ -40,14 +40,8 @@ const HomePage: React.FC = () => {
   
     // If there's no user (and not loading), display a message or redirect.
     // This state might be briefly visible before redirection or if redirection fails.
-     if (!user) {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <p>Redirecting to login...</p>
-        </div>
-      );
-    }
-  
+     
+    
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)]">

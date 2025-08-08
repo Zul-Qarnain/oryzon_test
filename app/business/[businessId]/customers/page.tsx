@@ -57,7 +57,7 @@ const BusinessCustomersListPage: React.FC = () => {
             </p>
           )}
         </div>
-        <div className="flex justify-end space-x-2 mt-auto pt-3 border-t border-[var(--border-light)]">
+        <div className=" hidden justify-end space-x-2 mt-auto pt-3 border-t border-[var(--border-light)]">
           <button
               onClick={() => router.push(`/business/${businessId}/customers/${customer.customerId}`)} // Assuming a future detail page
               className="p-2 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-dark-secondary)] rounded-md transition-colors flex items-center"
