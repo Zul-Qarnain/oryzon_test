@@ -12,9 +12,89 @@ import {
   ProductWithIncludes,
 } from './products.types';
 import { and, or, count, eq, ilike, inArray, gte, lte, desc } from 'drizzle-orm'; // Added 'or'
+import { GoogleGenAI } from "@google/genai";
+
+
 
 export class ProductsService {
   constructor() { }
+
+
+  async generateImageEmbedding(imageUrl: string | string[], query: boolean = false): Promise<number[] | null> {
+    try {
+      const queryObj: {
+        model: string;
+        input: { image: string }[] | { image: string };
+        normalized: boolean;
+        task?: string;
+      } = {
+        model: 'jina-clip-v2',
+        input: query
+          ? { image: Array.isArray(imageUrl) ? imageUrl[0] : imageUrl }
+          : Array.isArray(imageUrl)
+            ? imageUrl.map(url => ({ image: url }))
+            : [{ image: imageUrl }],
+        normalized: true, // Optional, defaults to true
+      }
+      if (query) queryObj.task = "retrieval.query";
+      const response = await fetch('https://api.jina.ai/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.JINA_API_KEY}`
+        },
+        body: JSON.stringify(queryObj),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(typeof data.data[0]?.embedding)
+      return data.data[0]?.embedding || null
+    } catch (error) {
+      console.error('Error generating image embedding:', error);
+      return null;
+    }
+    // Return null or a string representing the embedding
+  }
+
+  l2Normalize(vector: number[]): number[] {
+    const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    if (norm === 0) return vector.map(() => 0);
+    return vector.map(val => val / norm);
+  }
+
+  checkL2Norm(vector: number[]): boolean {
+    const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    return norm >= 0.999 && norm <= 1.001; // Check if norm is close to 1
+  }
+
+  async generateTextEmbedding(text: string | string[], query: boolean = false): Promise<number[] | number[][] | null> {
+    try {
+
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      });
+
+      const response = await ai.models.embedContent({
+        model: 'gemini-embedding-001',
+        contents: Array.isArray(text) ? text : [text],
+        config: {
+          taskType: query ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT",
+          outputDimensionality: 512
+
+        }
+      });
+
+        // console.log(response.embeddings[0]);
+      return (Array.isArray(text) ? response?.embeddings?.map(embedding => embedding.values ? this.l2Normalize(embedding.values) : undefined).filter((values): values is number[] => values !== undefined) : response?.embeddings?.[0].values ? this.l2Normalize(response.embeddings[0].values) : null) || null;
+    } catch (error) {
+      console.error('Error generating text embedding:', error);
+      return null;
+    }
+  }
 
   async createProduct(data: CreateProductData): Promise<Product> {
     const newProductData: NewProduct = {
@@ -128,6 +208,8 @@ export class ProductsService {
   async updateProduct(productId: string, data: UpdateProductData): Promise<Product | null> {
     // businessId is not part of UpdateProductData and should not be updated here.
     // providerUserId can be updated if present in data.
+   
+
     const [updatedProduct] = await db
       .update(products)
       .set({ ...data, updatedAt: new Date() })
@@ -169,13 +251,13 @@ export class ProductsService {
     const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
     const keywordConditions = [];
-    
+
     // Create keyword conditions - each keyword part can match name OR description
     const keywordParts = keyword ? keyword.split(' ').filter(part => part.trim() !== '') : [];
     for (const part of keywordParts) {
       keywordConditions.push(or(ilike(products.name, `%${part}%`), ilike(products.description, `%${part}%`)));
     }
-    
+
     // If we have keyword conditions, combine them with OR (any keyword can match)
     if (keywordConditions.length > 0) {
       conditions.push(or(...keywordConditions));
@@ -241,6 +323,9 @@ export class ProductsService {
 
     return { data, total: totalResult[0]?.value ?? 0 };
   }
+
+
+
 }
 
 export const productsService = new ProductsService();
