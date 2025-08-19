@@ -153,8 +153,7 @@ export class ChatsService {
   }
 
   async deleteChat(chatId: string): Promise<boolean> {
-    // Consider implications: what happens to messages in this chat?
-    // Soft delete might be preferable.
+    await db.delete(messages).where(eq(messages.chatId, chatId));
     const result = await db.delete(chats).where(eq(chats.chatId, chatId));
     return (result.rowCount ?? 0) > 0;
   }

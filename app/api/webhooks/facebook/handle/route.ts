@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { channelsService } from '@/backend/services//channels/channels.service';
-import { customersService } from '@/backend/services//customers/customers.service';
-import { chatsService } from '@/backend/services//chats/chats.service';
+import { channelsService } from '@/backend/services/channels/channels.service';
+import { customersService } from '@/backend/services/customers/customers.service';
+import { chatsService } from '@/backend/services/chats/chats.service';
 // Assuming these are the correct imports from your Facebook Messenger library
 import { FacebookMessageParser, FacebookMessagePayloadMessagingEntry as FacebookMessageObject, FacebookMessagingAPIClient } from 'fb-messenger-bot-api';
-import { Customer } from '@/backend/services//customers/customers.types';
-import { ConnectedChannelWithIncludes } from '@/backend/services//channels/channels.types';
+import { Customer } from '@/backend/services/customers/customers.types';
+import { ConnectedChannelWithIncludes } from '@/backend/services/channels/channels.types';
 import { messages } from '@/db/schema';
-import { Chat } from '@/backend/services//chats/chats.types';
-import { executeAgent } from '@/backend/services//ai/manager';
+import { Chat } from '@/backend/services/chats/chats.types';
+import { executeAgent } from '@/backend/services/ai/manager';
 import { log } from 'console';
 
 
@@ -33,6 +33,7 @@ const messagingClient = new FacebookMessagingAPIClient(PAGE_ACCESS_TOKEN);
 export async function POST(request: NextRequest): Promise<Response> {
     try {
         const body = await request.json();
+        console.log('Received webhook body:', JSON.stringify(body, null, 2));
         const messagesFB: FacebookMessageObject[] = FacebookMessageParser.parsePayload(body);
         const response = new Response('EVENT_RECEIVED', { status: 200 });
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             console.log(message.recipient.id)
             console.log(message.sender.id)
             const jsonString = JSON.stringify(message);
-            console.log(jsonString);
+            console.log('Processing Facebook message:', jsonString);
             if (message.sender.id != message.recipient.id && message.message && !message.message.is_echo) {
 
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                 const fbMessage: FacebookMessageObject = message;
 
 
-                //{
+                // {
 
                 if (senderPlatformId === recipientPageId) { // The message is from your page itself (bot) 
                     return response;
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                 // 1. Find ConnectedChannel using recipientPageId
                 let channel: ConnectedChannelWithIncludes | undefined;
                 try {
+                    console.log(`Fetching channel for recipientPageId: ${recipientPageId}`);
                     const { data } = await channelsService.getAllChannels({
                         filter: { platformSpecificId: recipientPageId },
                         include: {
@@ -74,6 +76,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                         limit: 1,
                     });
                     channel = data[0];
+                    console.log('Fetched channel:', channel);
                 } catch (error) {
                     console.error(`Error fetching channel for recipientPageId ${recipientPageId}:`, error);
                     return response;
@@ -90,9 +93,12 @@ export async function POST(request: NextRequest): Promise<Response> {
 
                 let customer: Customer | null = channel.customers?.[0] || null;
                 let chat: Chat | null = channel.chats?.[0] || null;
+                console.log('Existing customer:', customer);
+                console.log('Existing chat:', chat);
 
                 if (!customer) {
                     try {
+                        console.log(`Creating customer for senderPlatformId: ${senderPlatformId}`);
                         // DO: Uncomment and implement customer creation logic
                         customer = await customersService.createCustomer({
                             platformCustomerId: senderPlatformId,
@@ -100,6 +106,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                             fullName: `User ${senderPlatformId}`,
                             businessId: channel.business!.businessId,
                         });
+                        console.log('Created customer:', customer);
                     } catch (error) {
                         console.error(`Error finding or creating customer for senderPlatformId ${senderPlatformId}:`, error);
                         return response;
@@ -109,6 +116,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
                 if (!chat) {
                     try {
+                        console.log(`Creating chat for platformCustomerId: ${senderPlatformId}`);
                         chat = await chatsService.createChat({
                             platformCustomerId: senderPlatformId,
                             channelId: connectedChannelId,
@@ -116,6 +124,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                             providerUserId: channel.providerUserId,
                             status: 'OPEN', // Default status
                         });
+                        console.log('Created chat:', chat);
                     } catch (error) {
                         console.error(`Error creating chat for customer ${customer.customerId}:`, error);
                         return response;
@@ -242,7 +251,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                         }
                     }
 
-                    //}
+                    // }
 
 
 

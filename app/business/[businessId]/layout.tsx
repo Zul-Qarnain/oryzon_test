@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Header from '@/app/components/Header';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
-import { Loader2, Settings, Package, RadioTower, LayoutDashboard, Users, ShoppingCart, Briefcase, PlusCircle } from 'lucide-react';
+import { Loader2, Settings, Package, RadioTower, LayoutDashboard, Users, ShoppingCart, Briefcase, PlusCircle, MessageSquare } from 'lucide-react';
 
 // SidebarLink component definition
 const SidebarLink = ({ 
@@ -68,6 +68,7 @@ export default function BusinessDetailLayout({
     { id: 'products-overview', label: 'Products', icon: Package, href: `/business/${businessId}/products` },
     { id: 'new-product', label: 'Add Product', icon: PlusCircle, href: `/business/${businessId}/products/new`, parentSectionId: 'products-overview' },
     { id: 'customers', label: 'Customers', icon: Users, href: `/business/${businessId}/customers` }, 
+    { id: 'chats', label: 'Chats', icon: MessageSquare, href: `/business/${businessId}/chats` },
     { id: 'orders', label: 'Orders', icon: ShoppingCart, href: `/business/${businessId}/orders` }, 
     { id: 'settings', label: 'Settings', icon: Settings, href: `/business/${businessId}/settings` },
   ], [businessId]);
