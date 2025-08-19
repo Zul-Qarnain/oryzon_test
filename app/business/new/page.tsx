@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import CloseIcon from '@/components/CloseIcon';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
+import Image from 'next/image';
 
 const NewBusinessPage = () => {
   const router = useRouter();
@@ -110,10 +111,12 @@ const NewBusinessPage = () => {
       {/* Right Panel (Image) */}
       <div className="hidden lg:flex w-2/5 items-center justify-center p-8 relative overflow-hidden bg-color-secondary-variant">
          <div className="z-10 text-center">
-          <img
+          <Image
             src={pageImage}
             alt="Business creation illustration"
             className="max-w-sm md:max-w-md lg:max-w-lg"
+            width={500}
+            height={500}
           />
         </div>
       </div>

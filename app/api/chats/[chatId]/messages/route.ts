@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatsService } from '@/backend/services/chats/chats.service';
 
-export async function GET(request: NextRequest, context: { params: { chatId: string } }) {
+export async function GET(
+  request: NextRequest, 
+  context: { params: Promise<{ chatId: string }> }
+) {
   try {
     const { chatId } = await context.params;
     const chat = await chatsService.getChatById(chatId, {

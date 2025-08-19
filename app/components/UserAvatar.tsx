@@ -35,7 +35,7 @@ const UserAvatar: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button onClick={toggleDropdown} className="focus:outline-none">
         {FUser?.photoURL ? (
-          <img
+          <Image
             src={FUser.photoURL}
             alt={FUser.displayName || 'User Avatar'}
             width={32}
