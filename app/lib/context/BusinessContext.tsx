@@ -97,7 +97,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       setBusinessLoading(false);
       return response;
     },
-    [request, FUser] // Added FUser to dependencies if used for default filtering
+    [request] // Added FUser to dependencies if used for default filtering
   );
 
   const createBusiness = useCallback(

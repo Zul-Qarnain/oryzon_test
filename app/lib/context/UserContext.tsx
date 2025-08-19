@@ -56,6 +56,75 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user_loading, setUserLoading] = useState(true);
   const [error_user, setErrorUser] = useState<string | null>(null);
 
+  const syncUserWithBackend = useCallback(async (
+    firebaseUser: FirebaseUser,
+    operation: 'LOGIN' | 'SIGNUP',
+    provider: typeof loginProviderEnum.enumValues[number]
+    // businessName?: string // Removed from here, will be handled by calling code for separate business creation
+  ): Promise<UserWithIncludes | null> => {
+    setUserLoading(true);
+    setErrorUser(null);
+    try {
+      let filterParams = `providerUserId=${firebaseUser.uid}&loginProvider=${provider}`;
+      if (provider === 'EMAIL' && firebaseUser.email) {
+        filterParams = `email=${firebaseUser.email}&loginProvider=EMAIL`;
+      }
+      
+      const findResp = await request<{ data: UserWithIncludes[]; total: number }>("GET", `/api/users?${filterParams}`);
+      console.log("Find User Response:", findResp);
+      let existingUser: UserWithIncludes | null = null;
+      if (findResp.result && findResp.result.total > 0 && findResp.result.data[0]) {
+        existingUser = findResp.result.data[0];
+        console.log(JSON.stringify(findResp.result));
+      } else if (findResp.error && findResp.statusCode !== 404) { // Allow 404 for user not found
+         throw new Error(findResp.error || "Failed to check existing user");
+      }
+
+
+      if (existingUser) {
+        setUser(existingUser);
+        setFUser(firebaseUser);
+        return existingUser;
+      } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
+        const userData: CreateUserData = {
+          name: firebaseUser.displayName || 'Default Name',
+          phone: firebaseUser.phoneNumber || undefined,
+          email: firebaseUser.email || undefined,
+          providerUserId: firebaseUser.uid,
+          loginProvider: provider,
+          // businessName is no longer part of CreateUserData
+          // TODO: The calling code (e.g., signUpWithEmail) is now responsible for ensuring 'businessName'
+          // was provided if required by the overall business logic for signup, and then using it
+          // to create a Business entity separately after successful user creation via this sync.
+        };
+        // The direct check for businessName within this function is removed as it's no longer a parameter.
+        // The calling function (e.g., signUpWithEmail) should manage this requirement.
+        
+        const createResp = await request<UserWithIncludes>("POST", "/api/users", userData);
+
+        if (createResp.error || !createResp.result) {
+          throw new Error(createResp.error || "Failed to create user in backend");
+        }
+        setUser(createResp.result);
+        setFUser(firebaseUser);
+        return createResp.result;
+      } else if (operation === 'LOGIN' && provider === 'EMAIL' && !existingUser) {
+        throw new Error("User not found with this email. Please sign up or try a different login method.");
+      }
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorUser(message);
+      await signOut(auth).catch(e => console.error("Firebase signout failed during error handling:", e));
+      setFUser(null);
+      setFirebaseToken(null);
+      setUser(null);
+      return null;
+    } finally {
+      setUserLoading(false);
+    }
+  }, [request, setFirebaseToken]);
+
   // Effect for Firebase Auth state changes
   useEffect(() => {
     setUserLoading(true);
@@ -92,7 +161,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setUserLoading(false);
     });
     return () => unsubscribe();
-  }, [setFirebaseToken, user]); // Added user and setFirebaseToken to dependencies
+  }, [setFirebaseToken, user, syncUserWithBackend]); // Added user and setFirebaseToken to dependencies
 
   const fetchUser = useCallback(async (userId: string, options?: { include?: string }): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
@@ -190,75 +259,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [request]);
 
   const cleanError_User = useCallback(() => setErrorUser(null), []);
-
-  const syncUserWithBackend = async (
-    firebaseUser: FirebaseUser,
-    operation: 'LOGIN' | 'SIGNUP',
-    provider: typeof loginProviderEnum.enumValues[number]
-    // businessName?: string // Removed from here, will be handled by calling code for separate business creation
-  ): Promise<UserWithIncludes | null> => {
-    setUserLoading(true);
-    setErrorUser(null);
-    try {
-      let filterParams = `providerUserId=${firebaseUser.uid}&loginProvider=${provider}`;
-      if (provider === 'EMAIL' && firebaseUser.email) {
-        filterParams = `email=${firebaseUser.email}&loginProvider=EMAIL`;
-      }
-      
-      const findResp = await request<{ data: UserWithIncludes[]; total: number }>("GET", `/api/users?${filterParams}`);
-      console.log("Find User Response:", findResp);
-      let existingUser: UserWithIncludes | null = null;
-      if (findResp.result && findResp.result.total > 0 && findResp.result.data[0]) {
-        existingUser = findResp.result.data[0];
-        console.log(JSON.stringify(findResp.result));
-      } else if (findResp.error && findResp.statusCode !== 404) { // Allow 404 for user not found
-         throw new Error(findResp.error || "Failed to check existing user");
-      }
-
-
-      if (existingUser) {
-        setUser(existingUser);
-        setFUser(firebaseUser);
-        return existingUser;
-      } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
-        const userData: CreateUserData = {
-          name: firebaseUser.displayName || 'Default Name',
-          phone: firebaseUser.phoneNumber || undefined,
-          email: firebaseUser.email || undefined,
-          providerUserId: firebaseUser.uid,
-          loginProvider: provider,
-          // businessName is no longer part of CreateUserData
-          // TODO: The calling code (e.g., signUpWithEmail) is now responsible for ensuring 'businessName'
-          // was provided if required by the overall business logic for signup, and then using it
-          // to create a Business entity separately after successful user creation via this sync.
-        };
-        // The direct check for businessName within this function is removed as it's no longer a parameter.
-        // The calling function (e.g., signUpWithEmail) should manage this requirement.
-        
-        const createResp = await request<UserWithIncludes>("POST", "/api/users", userData);
-
-        if (createResp.error || !createResp.result) {
-          throw new Error(createResp.error || "Failed to create user in backend");
-        }
-        setUser(createResp.result);
-        setFUser(firebaseUser);
-        return createResp.result;
-      } else if (operation === 'LOGIN' && provider === 'EMAIL' && !existingUser) {
-        throw new Error("User not found with this email. Please sign up or try a different login method.");
-      }
-      return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setErrorUser(message);
-      await signOut(auth).catch(e => console.error("Firebase signout failed during error handling:", e));
-      setFUser(null);
-      setFirebaseToken(null);
-      setUser(null);
-      return null;
-    } finally {
-      setUserLoading(false);
-    }
-  };
 
   const loginWithEmail = async (email: string, password: string): Promise<FirebaseUser | null> => {
     setUserLoading(true);

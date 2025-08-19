@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatsService } from '@/backend/services/chats/chats.service';
 
-export async function DELETE(request: NextRequest, { params }: { params: { chatId: string } }) {
+export async function DELETE(
+  request: NextRequest, 
+  { params }: { params: Promise<{ chatId: string }> }
+) {
   try {
     const { chatId } = await params;
     const deleted = await chatsService.deleteChat(chatId);

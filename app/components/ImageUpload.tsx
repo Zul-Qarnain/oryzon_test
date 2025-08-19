@@ -146,11 +146,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       {currentImageUrl && (
         <div className="relative inline-block">
           <div className="relative w-48 h-48 rounded-lg overflow-hidden border border-[var(--border-medium)]">
-            <img
+            <Image
               src={currentImageUrl}
               alt="Product preview"
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              fill
             />
           </div>
           {!disabled && !isUploading && (
