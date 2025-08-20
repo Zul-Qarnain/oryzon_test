@@ -4,7 +4,6 @@
 import React, { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useProductContext } from '@/app/lib/context/ProductContext';
 import { useBusinessContext } from '@/app/lib/context/BusinessContext';
 import { useUserContext } from '@/app/lib/context/UserContext';

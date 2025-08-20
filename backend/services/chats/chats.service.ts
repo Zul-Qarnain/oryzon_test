@@ -82,6 +82,9 @@ export class ChatsService {
     if (filter?.status) {
       conditions.push(eq(chats.status, filter.status));
     }
+     if (filter?.chatType) {
+      conditions.push(eq(chats.chatType, filter.chatType));
+    }
     // Date range filters (startedAtBefore, etc.) are part of ChatFilterOptions, not GetAllChatsOptions.filter.
     // Removing them to match the current type definition for GetAllChatsOptions.
     // if (filter?.startedAtBefore) {

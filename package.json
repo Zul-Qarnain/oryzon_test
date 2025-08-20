@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
+    "@datastax/astra-db-ts": "^2.0.2",
     "@google/genai": "^1.13.0",
     "@imagekit/javascript": "^5.1.0",
     "@langchain/community": "^0.3.50",
@@ -21,6 +22,7 @@
     "@langchain/google-genai": "^0.2.16",
     "@langchain/google-webauth": "^0.2.16",
     "@neondatabase/serverless": "^1.0.1",
+    "@types/uuid": "^10.0.0",
     "ai": "^4.3.19",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.43.1",
@@ -31,7 +33,8 @@
     "next": "15.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

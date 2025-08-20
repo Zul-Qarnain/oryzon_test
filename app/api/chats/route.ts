@@ -1,7 +1,7 @@
 import { chatsService } from '@/backend/services/chats/chats.service';
 import { ChatIncludeOptions, GetAllChatsOptions, CreateChatData, Chat } from '@/backend/services/chats/chats.types'; // Added Chat
 import { parseIncludeQuery, parsePaginationParams, getStringFilterParam } from '@/app/api/utils'; // Corrected import path
-import { chatStatusEnum } from '@/db/schema';
+import { chatStatusEnum, chatTypeEnum } from '@/db/schema';
 
 // Updated valid includes for a chat
 const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
@@ -13,9 +13,14 @@ const VALID_CHAT_INCLUDES: (keyof ChatIncludeOptions)[] = [
 ];
 
 type ChatStatus = typeof chatStatusEnum.enumValues[number];
+type ChatType = typeof chatTypeEnum.enumValues[number];
 
 function isChatStatus(value: string): value is ChatStatus {
   return chatStatusEnum.enumValues.includes(value as ChatStatus);
+}
+
+function isChatType(value: string): value is ChatType {
+    return chatTypeEnum.enumValues.includes(value as ChatType);
 }
 
 
@@ -31,6 +36,7 @@ export async function GET(request: Request) {
     const platformCustomerId = getStringFilterParam(searchParams, 'platformCustomerId'); // Changed from customerId
     const channelId = getStringFilterParam(searchParams, 'channelId');
     const status = getStringFilterParam(searchParams, 'status');
+    const chatType = getStringFilterParam(searchParams, 'chatType');
 
     const includeOptions = parseIncludeQuery<ChatIncludeOptions, keyof ChatIncludeOptions>(
       includeQuery,
@@ -41,7 +47,7 @@ export async function GET(request: Request) {
       include: includeOptions,
       limit,
       offset,
-      filter: {} as Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status'>>, // Initialize filter
+      filter: {} as Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status' | 'chatType'>>, // Initialize filter
     };
 
     if (businessId) options.filter!.businessId = businessId;
@@ -49,6 +55,7 @@ export async function GET(request: Request) {
     if (platformCustomerId) options.filter!.platformCustomerId = platformCustomerId; // Changed from customerId
     if (channelId) options.filter!.channelId = channelId;
     if (status && isChatStatus(status)) options.filter!.status = status;
+    if (chatType && isChatType(chatType)) options.filter!.chatType = chatType;
 
 
     const result = await chatsService.getAllChats(options);

@@ -13,7 +13,8 @@ export async function GET(
         customer: true,
       }
     });
-
+    console.log(businessId)
+    console.log(chats);
     return NextResponse.json(chats);
   } catch (error) {
     console.error('Error fetching chats:', error);

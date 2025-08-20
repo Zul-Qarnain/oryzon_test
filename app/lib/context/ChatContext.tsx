@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Chat, ChatWithIncludes, ChatFilterOptions, CreateChatData, UpdateChatData } from "@/backend/services/chats/chats.types"; // Added CreateChatData, UpdateChatData
+import { Chat, ChatWithIncludes, GetAllChatsOptions, CreateChatData, UpdateChatData } from "@/backend/services/chats/chats.types"; // Added CreateChatData, UpdateChatData
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
 
@@ -16,7 +16,7 @@ export interface ChatContextType {
   chat_loading: boolean;
   error_chat: string | null;
   fetchChat: (chatId: string, options?: { include?: string }) => Promise<ApiResponse<ChatWithIncludes>>;
-  fetchChats: (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>>;
+  fetchChats: (options?: { filter?: GetAllChatsOptions['filter']; pagination?: PaginationOptions; include?: string }) => Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>>;
   createChat: (data: Omit<CreateChatData, 'providerUserId' | 'customerId'> & { businessId: string; platformCustomerId: string; channelId: string; }) => Promise<ApiResponse<ChatWithIncludes>>; // Updated createChat data type
   updateChat: (chatId: string, data: UpdateChatData) => Promise<ApiResponse<ChatWithIncludes>>; // Updated updateChat data type
   deleteChat: (chatId: string) => Promise<ApiResponse<null>>;
@@ -51,7 +51,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [request]);
 
   const fetchChats = useCallback(
-    async (options?: { filter?: ChatFilterOptions; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>> => {
+    async (options?: { filter?: GetAllChatsOptions['filter']; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: ChatWithIncludes[]; total: number }>> => {
       setChatLoading(true);
       setErrorChat(null);
       const params = new URLSearchParams();

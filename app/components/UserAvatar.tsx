@@ -1,8 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useUserContext } from '@/app/lib/context/UserContext';
-import Image from 'next/image';
 import { User as UserIcon, LogOut } from 'lucide-react'; // Added LogOut
 
 const UserAvatar: React.FC = () => {
@@ -35,7 +35,7 @@ const UserAvatar: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button onClick={toggleDropdown} className="focus:outline-none">
         {FUser?.photoURL ? (
-          <Image
+          <img
             src={FUser.photoURL}
             alt={FUser.displayName || 'User Avatar'}
             width={32}

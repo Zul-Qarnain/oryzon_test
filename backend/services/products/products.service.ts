@@ -13,6 +13,14 @@ import {
 } from './products.types';
 import { and, or, count, eq, ilike, inArray, gte, lte, desc } from 'drizzle-orm'; // Added 'or'
 import { GoogleGenAI } from "@google/genai";
+import { DataAPIClient, DataAPIVector, vector } from "@datastax/astra-db-ts";
+
+
+const client = new DataAPIClient(process.env.ASTRA_TOKEN);
+console.log(process.env.ASTRA_TOKEN)
+const database = client.db('https://bdadc1d5-436e-41bf-a36e-6fe4a1235b6b-us-east-2.apps.astra.datastax.com', { keyspace: "default_keyspace" });
+const imageCollection = database.collection("image_embedding_store");
+const textCollection = database.collection("text_embedding_store");
 
 
 
@@ -52,7 +60,7 @@ export class ProductsService {
 
       const data = await response.json();
       console.log(typeof data.data[0]?.embedding)
-      return (Array.isArray(imageUrl) ? data.data.map((item:{embedding: number[]}) => item.embedding) : data.data[0]?.embedding) || null
+      return (Array.isArray(imageUrl) ? data.data.map((item: { embedding: number[] }) => item.embedding) : data.data[0]?.embedding) || null
     } catch (error) {
       console.error('Error generating image embedding:', error);
       return null;
@@ -88,7 +96,7 @@ export class ProductsService {
         }
       });
 
-        // console.log(response.embeddings[0]);
+      // console.log(response.embeddings[0]);
       return (Array.isArray(text) ? response?.embeddings?.map(embedding => embedding.values ? this.l2Normalize(embedding.values) : undefined).filter((values): values is number[] => values !== undefined) : response?.embeddings?.[0].values ? this.l2Normalize(response.embeddings[0].values) : null) || null;
     } catch (error) {
       console.error('Error generating text embedding:', error);
@@ -110,7 +118,25 @@ export class ProductsService {
       shortId: data.shortId,
       isAvailable: data.isAvailable,
     };
+    const imageEmbedding = await this.generateImageEmbedding(data.imageUrl!);
+    const textEmbedding = await this.generateTextEmbedding(data.name + " " + data.description);
+
+    if (!imageEmbedding) { throw new Error("Failed to generate image embedding"); }
+    if (!textEmbedding) { throw new Error("Failed to generate text embedding"); }
     const [newProduct] = await db.insert(products).values(newProductData).returning();
+
+    const imageResult = await imageCollection.insertOne({
+      _id: newProduct.productId,
+      $vector: imageEmbedding ? new DataAPIVector(imageEmbedding) : null,
+    });
+    console.log(imageResult);
+
+    const textResult = await textCollection.insertOne({
+      _id: newProduct.productId,
+      $vector: textEmbedding ? new DataAPIVector(textEmbedding as number[]) : null,
+    });
+    console.log(textResult);
+
     return newProduct;
   }
 
@@ -142,6 +168,7 @@ export class ProductsService {
     // Explicitly type the filter object using ProductFilterOptions
     const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
+
 
     if (filter?.name) {
       conditions.push(ilike(products.name, `%${filter.name}%`));
@@ -208,23 +235,43 @@ export class ProductsService {
   async updateProduct(productId: string, data: UpdateProductData): Promise<Product | null> {
     // businessId is not part of UpdateProductData and should not be updated here.
     // providerUserId can be updated if present in data.
-   const existingProduct = await db.query.products.findFirst({
-     where: eq(products.productId, productId)
-   });
+    const existingProduct = await db.query.products.findFirst({
+      where: eq(products.productId, productId)
+    });
 
     if (!existingProduct) {
       throw new Error("Product not found");
     }
 
-    if( data.imageUrl && data.imageUrl !== existingProduct.imageUrl) {
+    if (data.imageUrl && data.imageUrl !== existingProduct.imageUrl) {
       const imageEmbedding = await this.generateImageEmbedding(data.imageUrl, false);
-      //TODO: Handle image embedding storage if needed
+      if (!imageEmbedding) {
+        throw new Error("Failed to generate image embedding");
+      }
+
+      const result = await imageCollection.replaceOne({
+        _id: productId
+      }, {
+        $vector: imageEmbedding ? new DataAPIVector(imageEmbedding as number[]) : null
+      });
+      console.log(result);
     }
 
     if ((data.name && data.name !== existingProduct.name) || (data.description && data.description !== existingProduct.description)) {
 
       const textEmbedding = await this.generateTextEmbedding((data.name || existingProduct.name) + ' ' + (data.description || existingProduct.description), false);
       //TODO: Handle text embedding storage if needed
+      if (!textEmbedding) {
+        throw new Error("Failed to generate text embedding");
+      }
+
+      const result = await textCollection.replaceOne({
+        _id: productId
+      }, {
+        $vector: textEmbedding ? new DataAPIVector(textEmbedding as number[]) : null,
+        text: (data.name) + ' ' + (data.description)
+      });
+      console.log(result);
     }
     const [updatedProduct] = await db
       .update(products)
@@ -312,6 +359,23 @@ export class ProductsService {
     }
     if (filter?.shortId) {
       conditions.push(eq(products.shortId, filter.shortId));
+    }
+
+
+    const textEmbedding = await this.generateTextEmbedding(keyword, true);
+
+    if (!textEmbedding) {
+      throw new Error("Failed to generate text embedding");
+    }
+    console.log(textEmbedding.length)
+
+
+    // Find rows
+    const cursor = textCollection.find({}, { sort: { $vector: textEmbedding as number[] }, includeSimilarity: true });
+
+    // Iterate over the found documents
+    for await (const document of cursor) {
+      console.log(document);
     }
 
     const productsQuery = db.query.products.findMany({

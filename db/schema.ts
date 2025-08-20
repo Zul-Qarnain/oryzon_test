@@ -20,7 +20,7 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', '
 export const chatStatusEnum = pgEnum('chat_status', ['OPEN', 'CLOSED_BY_BOT', 'CLOSED_BY_AGENT', 'ARCHIVED']);
 export const messageSenderTypeEnum = pgEnum('message_sender_type', ['BOT', 'CUSTOMER', 'AGENT']);
 export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'IMAGE',  'AUDIO',]);
-
+export const chatTypeEnum = pgEnum('chat_type', ['real', 'test']);
 // Tables
 export const users = pgTable('users', {
   userId: uuid('user_id').primaryKey().defaultRandom(), // Primary internal ID
@@ -126,9 +126,9 @@ export const chats = pgTable('chats', {
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
-  status: chatStatusEnum('status').default('OPEN').notNull(), // Added .notNull()
-}); // Removed explicit foreignKey block
-
+  status: chatStatusEnum('status').default('OPEN').notNull(),
+  chatType: chatTypeEnum("chat_type").default("real").notNull() // Removed explicit foreignKey block
+});
 export const messages = pgTable('messages', {
   messageId: uuid('message_id').primaryKey().defaultRandom(),
   chatId: uuid('chat_id').notNull().references(() => chats.chatId),
@@ -137,6 +137,8 @@ export const messages = pgTable('messages', {
   content: text('content').notNull(),
   timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
   platformMessageId: text('platform_message_id'),
+  totalTimeTaken: decimal("total_time_taken",{ precision: 10, scale: 2 }).default("0"),
+  cost: decimal("cost",{ precision: 10, scale: 2 }).default("0"),
 });
 
 // Relations

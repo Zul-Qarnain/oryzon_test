@@ -28,7 +28,7 @@ export interface GetChatByIdOptions {
 export interface GetAllChatsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status'>>;
+  filter?: Partial<Pick<Chat, 'businessId' | 'providerUserId' | 'platformCustomerId' | 'channelId' | 'status' | 'chatType'>>;
   include?: ChatIncludeOptions;
 }
 
@@ -58,6 +58,7 @@ export interface ChatFilterOptions {
   platformCustomerId?: Customer['platformCustomerId']; // Changed from customerId
   channelId?: ConnectedChannel['channelId'];
   status?: Chat['status'];
+  chatType?: Chat['chatType'];
   startedAtBefore?: Date;
   startedAtAfter?: Date;
   lastMessageAtBefore?: Date;

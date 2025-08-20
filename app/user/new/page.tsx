@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -5,7 +6,6 @@ import CloseIcon from '@/components/CloseIcon';
 import { useUserContext } from '@/app/lib/context/UserContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
-import Image from 'next/image';
 
 const NewProjectPage = () => {
   const [step, setStep] = useState(1);
@@ -163,9 +163,9 @@ const NewProjectPage = () => {
         </svg>
 
         <div className="z-10 text-center">
-          <Image 
-            src={step === 1 ? step1Image : step2Image} 
-            alt="Project illustration" 
+          <img
+            src={step === 1 ? step1Image : step2Image}
+            alt="Project illustration"
             className="max-w-sm md:max-w-md lg:max-w-lg"
             width={500}
             height={500}

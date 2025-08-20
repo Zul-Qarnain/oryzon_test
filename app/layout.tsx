@@ -11,6 +11,7 @@ import { MessageProvider } from "./lib/context/MessageContext";
 import { ProductProvider } from "./lib/context/ProductContext";
 import { CustomerProvider } from "./lib/context/CustomerContext"; // Import CustomerProvider
 import { BusinessProvider } from "./lib/context/BusinessContext";
+import { TryChatProvider } from "./lib/context/TryChatContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,19 +41,21 @@ export default function RootLayout({
         <FetchProvider>
           <UserProvider>
             <BusinessProvider>
-            <ChannelProvider>
-              <ChatProvider>
-                <OrderProvider>
-                  <MessageProvider>
-                    <ProductProvider>
-                      <CustomerProvider>
-                        {children}
-                      </CustomerProvider>
-                    </ProductProvider>
-                  </MessageProvider>
-                </OrderProvider>
-              </ChatProvider>
-            </ChannelProvider>
+              <ChannelProvider>
+                <ChatProvider>
+                  <OrderProvider>
+                    <MessageProvider>
+                      <ProductProvider>
+                        <CustomerProvider>
+                          <TryChatProvider>
+                            {children}
+                          </TryChatProvider>
+                        </CustomerProvider>
+                      </ProductProvider>
+                    </MessageProvider>
+                  </OrderProvider>
+                </ChatProvider>
+              </ChannelProvider>
             </BusinessProvider>
           </UserProvider>
         </FetchProvider>

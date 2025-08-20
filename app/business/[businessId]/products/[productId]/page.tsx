@@ -4,7 +4,6 @@
 import React, { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useProductContext } from '@/app/lib/context/ProductContext';
 import { useUserContext } from '@/app/lib/context/UserContext';
 import { Loader2, AlertCircle, Edit3, Package, DollarSign, CheckCircle, XCircle, Info } from 'lucide-react';

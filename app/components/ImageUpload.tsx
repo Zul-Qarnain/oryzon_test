@@ -1,8 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, Link } from 'lucide-react';
-import Image from 'next/image';
 
 interface ImageUploadProps {
   currentImageUrl?: string | null;
@@ -146,12 +146,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       {currentImageUrl && (
         <div className="relative inline-block">
           <div className="relative w-48 h-48 rounded-lg overflow-hidden border border-[var(--border-medium)]">
-            <Image
+            <img
               src={currentImageUrl}
               alt="Product preview"
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              fill
+              
             />
           </div>
           {!disabled && !isUploading && (

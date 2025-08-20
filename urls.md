@@ -358,6 +358,7 @@ This document lists all backend API endpoints, their query parameters, and possi
   "channelId": "string",
   "platformCustomerId": "string",
   "fullName": "string | null",
+  "address": "string",
   "profilePictureUrl": "string | null",
   "firstSeenAt": "string (ISO date)",
   "lastSeenAt": "string (ISO date)"
@@ -368,7 +369,7 @@ This document lists all backend API endpoints, their query parameters, and possi
 - **Query Parameters:**
   - `include`: Comma-separated list (`business,userViaProviderId,connectedChannel,orders,chats`)
   - `limit`, `offset`: Pagination
-  - `businessId`, `providerUserId`, `channelId`, `platformCustomerId`, `fullName`: Filtering
+  - `businessId`, `providerUserId`, `channelId`, `platformCustomerId`, `fullName`, `address`: Filtering
 - **Success Response:**  
   - Status: 200  
   `{ "data": [CustomerWithIncludes], "total": number }`
@@ -396,6 +397,7 @@ This document lists all backend API endpoints, their query parameters, and possi
     "channelId": "string",
     "platformCustomerId": "string",
     "fullName"?: "string | null",
+    "address"?: "string",
     "profilePictureUrl"?: "string | null"
   }
   ```
@@ -429,6 +431,7 @@ This document lists all backend API endpoints, their query parameters, and possi
     "providerUserId"?: "string | null",
     "platformCustomerId"?: "string",
     "fullName"?: "string | null",
+    "address"?: "string",
     "profilePictureUrl"?: "string | null"
   }
   ```
@@ -606,8 +609,7 @@ This document lists all backend API endpoints, their query parameters, and possi
   "orderStatus": "PENDING | CONFIRMED | PROCESSING | SHIPPED | CANCELLED",
   "totalAmount": "string",
   "currency": "string",
-  "shippingAddress": "object | null",
-  "billingAddress": "object | null",
+  "shippingAddress": "string",
   "createdAt": "string (ISO date)",
   "updatedAt": "string (ISO date)"
 }
@@ -659,8 +661,7 @@ This document lists all backend API endpoints, their query parameters, and possi
     "orderStatus"?: "PENDING | CONFIRMED | PROCESSING | SHIPPED | CANCELLED",
     "totalAmount": "string",
     "currency": "string",
-    "shippingAddress"?: "object | null",
-    "billingAddress"?: "object | null",
+    "shippingAddress": "string",
     "orderItems": [
       {
         "productId": "string",
@@ -701,8 +702,7 @@ This document lists all backend API endpoints, their query parameters, and possi
   ```json
   {
     "orderStatus"?: "PENDING | CONFIRMED | PROCESSING | SHIPPED | CANCELLED",
-    "shippingAddress"?: "object | null",
-    "billingAddress"?: "object | null",
+    "shippingAddress"?: "string",
     "providerUserId"?: "string | null"
   }
   ```
@@ -738,12 +738,13 @@ This document lists all backend API endpoints, their query parameters, and possi
 {
   "chatId": "string",
   "businessId": "string",
-  "customerId": "string",
+  "platformCustomerId": "string",
   "channelId": "string",
   "providerUserId": "string | null",
   "startedAt": "string (ISO date)",
   "lastMessageAt": "string (ISO date)",
-  "status": "OPEN | CLOSED_BY_BOT | CLOSED_BY_AGENT | ARCHIVED"
+  "status": "OPEN | CLOSED_BY_BOT | CLOSED_BY_AGENT | ARCHIVED",
+  "chatType": "real | test"
 }
 ```
 
@@ -751,7 +752,7 @@ This document lists all backend API endpoints, their query parameters, and possi
 - **Query Parameters:**
   - `include`: Comma-separated list (`business,userViaProviderId,customer,connectedChannel,messages`)
   - `limit`, `offset`: Pagination
-  - `businessId`, `providerUserId`, `customerId`, `channelId`, `status`: Filtering
+  - `businessId`, `providerUserId`, `platformCustomerId`, `channelId`, `status`, `chatType`: Filtering
 - **Success Response:**  
   - Status: 200  
   `{ "data": [ChatWithIncludes], "total": number }`
@@ -775,7 +776,9 @@ This document lists all backend API endpoints, their query parameters, and possi
     "senderType": "BOT | CUSTOMER | AGENT",
     "contentType": "TEXT | IMAGE | AUDIO",
     "content": "string",
-    "timestamp": "string (ISO date)"
+    "timestamp": "string (ISO date)",
+    "totalTimeTaken": "string | null",
+    "cost": "string | null"
   }
   ```
 - **Error Response:**  
@@ -787,10 +790,11 @@ This document lists all backend API endpoints, their query parameters, and possi
   ```json
   {
     "businessId": "string",
-    "customerId": "string",
+    "platformCustomerId": "string",
     "channelId": "string",
     "providerUserId"?: "string | null",
-    "status"?: "OPEN | CLOSED_BY_BOT | CLOSED_BY_AGENT | ARCHIVED"
+    "status"?: "OPEN | CLOSED_BY_BOT | CLOSED_BY_AGENT | ARCHIVED",
+    "chatType"?: "real | test"
   }
   ```
 - **Success Response:**  
@@ -798,7 +802,7 @@ This document lists all backend API endpoints, their query parameters, and possi
   Chat
 - **Error Response:**  
   - Status: 400
-    `{ "message": "businessId, customerId, and channelId are required" }`
+    `{ "message": "businessId, platformCustomerId, and channelId are required" }`
   - Status: 500  
   `{ "message": "Internal server error", "error": "details" }`
 
@@ -817,10 +821,11 @@ This document lists all backend API endpoints, their query parameters, and possi
     `{ "message": "Internal server error", "error": "details" }`
 
 ### PUT `/api/chats/[chatId]`
-- **Body:** Partial Chat (excluding `chatId`, `businessId`, `customerId`, `channelId`, `startedAt`, `lastMessageAt`)
+- **Body:** Partial Chat (excluding `chatId`, `businessId`, `platformCustomerId`, `channelId`, `startedAt`, `lastMessageAt`)
   ```json
   {
     "status"?: "OPEN | CLOSED_BY_BOT | CLOSED_BY_AGENT | ARCHIVED",
+    "chatType"?: "real | test",
     "providerUserId"?: "string | null"
   }
   ```
@@ -860,7 +865,9 @@ This document lists all backend API endpoints, their query parameters, and possi
   "senderType": "BOT | CUSTOMER | AGENT",
   "contentType": "TEXT | IMAGE | AUDIO",
   "content": "string",
-  "timestamp": "string (ISO date)"
+  "timestamp": "string (ISO date)",
+  "totalTimeTaken": "string | null",
+  "cost": "string | null"
 }
 ```
 
@@ -875,6 +882,92 @@ This document lists all backend API endpoints, their query parameters, and possi
 - **Note:** Message creation is typically handled via real-time WebSocket communication or through specific backend triggers (e.g., webhooks from external platforms). If a direct HTTP POST was implemented, it would likely be similar to:
   - **Body:** `{ "chatId": "string", "senderType": "BOT | CUSTOMER | AGENT", "contentType": "TEXT | IMAGE | AUDIO", "content": "string", "platformMessageId"?: "string | null" }`
   - **Success Response:** Message
+
+---
+
+## Webhooks
+
+### POST `/api/webhooks/facebook`
+- **Description:** Facebook webhook endpoint for receiving messages from Facebook Pages
+- **Query Parameters (GET):**
+  - `hub.mode`: Webhook verification mode
+  - `hub.verify_token`: Verification token
+  - `hub.challenge`: Challenge string for verification
+- **GET Success Response:**
+  - Status: 200
+  Challenge string (for webhook verification)
+- **GET Error Response:**
+  - Status: 403
+  `Forbidden` (invalid verification token)
+- **POST Body:** Facebook webhook payload (automatically parsed)
+- **POST Success Response:**
+  - Status: 200
+  `EVENT_RECEIVED`
+- **POST Error Response:**
+  - Status: 500
+  `Internal Server Error`
+
+### POST `/api/webhooks/facebook/handle`
+- **Description:** Internal handler for processing Facebook messages (called asynchronously)
+- **Body:** Facebook webhook payload
+- **Success Response:**
+  - Status: 200
+  `EVENT_RECEIVED`
+- **Error Response:**
+  - Status: 500
+  `Internal Server Error`
+
+### POST `/api/webhooks/try`
+- **Description:** Test webhook endpoint for custom message format
+- **Body:**
+  ```json
+  {
+    "recipient": {
+      "id": "string"
+    },
+    "sender": {
+      "id": "string"
+    },
+    "content": {
+      "text": "string | null",
+      "image": "string | null"
+    }
+  }
+  ```
+- **Success Response:**
+  - Status: 200
+  ```json
+  {
+    "image": "string | null",
+    "msg": "string "
+  }
+  ```
+- **Error Response:**
+  - Status: 400
+  `ERROR_SAME_SENDER` (sender and recipient are the same)
+  - Status: 404
+  `ERROR_CHANNEL_NOT_FOUND` (channel not found for recipient)
+  - Status: 500
+  `ERROR_FETCHING_CHANNEL` | `ERROR_CREATING_CUSTOMER` | `ERROR_CREATING_CHAT` | `ERROR_PROCESSING_MESSAGE` | `Internal Server Error`
+
+---
+
+## ImageKit
+
+### GET `/api/imagekit`
+- **Description:** Get ImageKit authentication parameters for client-side uploads
+- **Success Response:**
+  - Status: 200
+  ```json
+  {
+    "token": "string",
+    "expire": "number",
+    "signature": "string"
+  }
+  ```
+- **Error Response:**
+  - Status: 500
+  `Internal Server Error`
 
 ---
 
