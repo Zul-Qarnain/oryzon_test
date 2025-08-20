@@ -2,16 +2,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { FetchProvider } from "./lib/context/FetchContext";
-import { UserProvider } from "./lib/context/UserContext";
-import { ChatProvider } from "./lib/context/ChatContext";
-import { ChannelProvider } from "./lib/context/ChannelContext";
-import { OrderProvider } from "./lib/context/OrderContext";
-import { MessageProvider } from "./lib/context/MessageContext";
-import { ProductProvider } from "./lib/context/ProductContext";
-import { CustomerProvider } from "./lib/context/CustomerContext"; // Import CustomerProvider
-import { BusinessProvider } from "./lib/context/BusinessContext";
-import { TryChatProvider } from "./lib/context/TryChatContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,27 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <FetchProvider>
-          <UserProvider>
-            <BusinessProvider>
-              <ChannelProvider>
-                <ChatProvider>
-                  <OrderProvider>
-                    <MessageProvider>
-                      <ProductProvider>
-                        <CustomerProvider>
-                          <TryChatProvider>
-                            {children}
-                          </TryChatProvider>
-                        </CustomerProvider>
-                      </ProductProvider>
-                    </MessageProvider>
-                  </OrderProvider>
-                </ChatProvider>
-              </ChannelProvider>
-            </BusinessProvider>
-          </UserProvider>
-        </FetchProvider>
+        {children}
       </body>
     </html>
   );
