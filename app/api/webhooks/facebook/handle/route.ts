@@ -148,68 +148,33 @@ export async function POST(request: NextRequest): Promise<Response> {
                 if (fbMessage.message?.attachments) {
                     for (const attachment of fbMessage.message.attachments) {
                         if (attachment.type === 'image' && attachment.payload && 'url' in attachment.payload) {
-                            const messageContentHUMAN: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+                            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
                                 content: `A image with [IMAGE URL]: ${attachment.payload.url}`,
                                 senderType: 'CUSTOMER', // Assuming message from platform user is 'Customer'
                                 contentType: 'IMAGE',
                                 // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
                             };
-                            const messageContentAI: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
-                                content: `[SYSTEM_START]: (NOTE THAT IT IS SYSTEM PROMPT , NOT USER REPLY , USED TO GUIDE MY THOUGHTS) USER HAS GIVEN YOU A IMAGE URL (${attachment.payload.url}) AND YOU NEED TO PROCESS IT . AS IT TAKES TIME USER IS NOTFIED TO WAIT FOR A WHILE [SYSTEM_END] 
-                                         Please wait a moment while processing the image. This may take a minute....
-                                `,
-                                senderType: 'BOT', // Assuming message from platform user is 'BOT'
-                                contentType: 'IMAGE',
-                                // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
-                            };
+                            
                             console.log("User sent an image:", attachment.payload.url);
 
                             try {
 
-                                await chatsService.handleNewMessage(
-                                    messageContentHUMAN,
-                                    chat.chatId,
-                                );
-                                await chatsService.handleNewMessage(
-                                    messageContentAI,
-                                    chat.chatId,
-                                );
-                                await messagingClient.sendTextMessage(
-                                    messageSenderPsid,
-                                    `Please wait a moment while processing the image. This may take a minute...`
-                                );
-                                const products = await productsService.getProductByImageURL(attachment.payload.url, channel.business!.businessId);
-                                let result = '';
-                                if (products) {
 
-                                    if (products.length > 1) {
-                                        for (const product of products) {
-                                            result += formatObjectToString(product, 'Product Info') + '\n---\n';
-                                        }
-                                    } else {
-                                        result = formatObjectToString(products[0], 'Product Info');
-                                    }
-                                }
-                                else {
-                                    result = 'No products found for the provided image.';
-                                }
-                                console.log("Product search result:", result);
-                                await messagingClient.markSeen(messageSenderPsid);
-                                await messagingClient.toggleTyping(messageSenderPsid, true);
-                                const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
-                                    content: `[SYSTEM START] AFTER TELLING USER TO WAIT, THE IMAGE WAS USED TO FIND ANY PRODUCT. SYSTEM ASSUMED THE USER PROVIDED IMAGE FOR PRODUCT SEARCH. IMAGE URL: ${attachment.payload.url}
-                                 --RESULT: ${result}
-                                 THIS SYSTEM MESSAGE IS NOT SEEN BY USER.
-                                [SYSTEM END] `,
-                                    senderType: 'BOT', // Assuming message from platform user is 'BOT'
-                                    contentType: 'TEXT',
-                                    // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
-                                };
-                                const lastMsgs = await chatsService.handleNewMessage(
+
+                                 const lastMsgs = await chatsService.handleNewMessage(
                                     messageContent,
                                     chat.chatId,
                                 );
 
+                                await messagingClient.sendTextMessage(
+                                    messageSenderPsid,
+                                    `Please wait a moment while processing the image. This may take a minute...`
+                                );
+                                
+                                await messagingClient.markSeen(messageSenderPsid);
+                                await messagingClient.toggleTyping(messageSenderPsid, true);
+                               
+                               
                                 const replyUserFn = async (msg: unknown) => {
                                     const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
                                     await messagingClient.sendTextMessage(messageSenderPsid, content);

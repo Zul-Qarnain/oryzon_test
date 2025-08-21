@@ -44,7 +44,7 @@ export function formatObjectToString(obj: unknown, title: string): string {
 
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      if(key == 'businessId') continue ;
+      if (key == 'businessId') continue;
       const value = (obj as Record<string, unknown>)[key];
       result += `  ${key == 'shortId' ? 'shortTag' : key}: ${formatValue(value).trimStart()}\n`;
     }
@@ -60,7 +60,7 @@ const OrderItemSchemaForTool = z.object({
   currencyAtPurchase: z.string().length(3).describe("Currency of the priceAtPurchase (e.g., \"USD\").")
 });
 
-export const getAITools = (customerId: string, connectedPageID: string, businessId: string,address:string, replyUserFn: (message: string) => Promise<void>, replyUserWithProductImageAndInfoFn: (productImageURL: string, productInfo: string) => Promise<void>) => {
+export const getAITools = (customerId: string, connectedPageID: string, businessId: string, address: string, replyUserFn: (message: string) => Promise<void>, replyUserWithProductImageAndInfoFn: (productImageURL: string, productInfo: string) => Promise<void>) => {
   // --- Schemas ---
   const getProductByShortTagSchema = z.object({
     shortTag: z.string().describe('The short tag of the product to retrieve.'),
@@ -142,7 +142,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     console.log(`getProductByShortTag is being called with params: ${JSON.stringify({ shortTag })} and businessId: ${businessId}`);
     try {
       const productsResult = await productsService.getAllProducts({
-        filter: { shortId: shortTag, businessId:   businessId },
+        filter: { shortId: shortTag, businessId: businessId },
         limit: 1,
         include: {}
       });
@@ -151,7 +151,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       if (!product) {
         return formatObjectToString({ error: 'Product not found or access denied for this channel.' }, 'Product Information');
       }
-      return formatObjectToString(product,"Product Info"); // Return product details as a formatted string
+      return formatObjectToString(product, "Product Info"); // Return product details as a formatted string
     } catch (error) {
       console.error(`Error fetching product by short tag ${shortTag}:`, error);
       return formatObjectToString({
@@ -189,7 +189,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       return formatObjectToString({ result }, 'Calculation Result');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown calculation error';
-      return formatObjectToString({ 
+      return formatObjectToString({
         error: `Could not perform the calculation: ${errorMessage}. Please check your expression and try again.`
       }, 'Calculation Error');
     }
@@ -197,15 +197,22 @@ export const getAITools = (customerId: string, connectedPageID: string, business
 
   const getProductByImageUrlExecute = async ({ imageUrl }: z.infer<typeof getProductByImageUrlSchema>) => {
     console.log(`getProductByImageUrl is being called with params: ${JSON.stringify({ imageUrl })}`);
-    const productsResult = await productsService.getAllProducts({
-      filter: { businessId, imageId: imageUrl },
-      limit: 1,
-      include: {}
-    });
-    if (!productsResult.data.length) {
-      return formatObjectToString({ error: 'Product not found for this image URL in this channel or access denied.' }, 'Product Information');
+    const products = await productsService.getProductByImageURL(imageUrl, businessId);
+    let result = '';
+    if (products) {
+
+      if (products.length > 1) {
+        for (const product of products) {
+          result += formatObjectToString(product, 'Product Info') + '\n---\n';
+        }
+      } else {
+        result = formatObjectToString(products[0], 'Product Info');
+      }
     }
-    return formatObjectToString(productsResult.data[0], 'Product Information');
+    else {
+      result = 'No products found for the provided image.';
+    }
+    return result;
   };
 
   const createProductExecute = async (productParams: z.infer<typeof createProductSchema>) => {
@@ -309,7 +316,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       return result;
 
 
-      
+
     } catch (error) {
       console.error(`Error fetching products by keyword '${keyword}':`, error);
       return formatObjectToString({
@@ -326,7 +333,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         filter: filterOptions,
         limit: limit,
         offset: offset,
-        include: {} 
+        include: {}
       });
       console.log(`Products found by keyword '${keyword}' with max price ${maxPrice}: ${JSON.stringify(productsResult)}`);
       if (!productsResult.data || productsResult.data.length === 0) {
@@ -431,7 +438,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - totalAmount (string, required): Total amount for the order (e.g., "100.50").
         - currency (string, required, 3 letters): Currency code for the totalAmount (e.g., "USD").
         - orderStatus (optional, default 'PENDING'): Can be 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED'.
-        - shippingAddress (string): ${ address == "" ? 'You must ask for the shipping address to the user. It is mendatory to create the order' : 'User already provided the shipping address in past. The address is ' + address + ' . Show this address to user and politly ask if he wants to change it? If not go with it or if he provide use the updated one' }`,
+        - shippingAddress (string): ${address == "" ? 'You must ask for the shipping address to the user. It is mendatory to create the order' : 'User already provided the shipping address in past. The address is ' + address + ' . Show this address to user and politly ask if he wants to change it? If not go with it or if he provide use the updated one'}`,
       schema: createOrderSchema,
     }),
 
@@ -455,22 +462,22 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       schema: getProductByKeywordWithMaxPriceSchema,
     }),
 
-    replyUser: tool(async ({msg} ) => { await replyUserFn(msg); console.log(msg); }, {
+    replyUser: tool(async ({ msg }) => { await replyUserFn(msg); console.log(msg); }, {
       name: 'replyUser',
-      description:'reply to user using msg. If you dont have any image link and just want to send simple text message to user, use this tool',
-      schema:z.object({
-    msg: z.string().describe('The message to reply')
+      description: 'reply to user using msg. If you dont have any image link and just want to send simple text message to user, use this tool',
+      schema: z.object({
+        msg: z.string().describe('The message to reply')
       }),
     }),
 
-    replyUserWithProductImageAndInfo: tool(async ({products} ) => { 
+    replyUserWithProductImageAndInfo: tool(async ({ products }) => {
       for (const product of products) {
-        await replyUserWithProductImageAndInfoFn(product.productImage, product.productInfo); 
+        await replyUserWithProductImageAndInfoFn(product.productImage, product.productInfo);
         console.log(product.productImage, product.productInfo);
       }
     }, {
       name: 'replyUserWithProductImageAndInfo',
-      description:'IF YOU FIND imageUrl in product info you must use this tool to reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
+      description: 'IF YOU FIND imageUrl in product info you must use this tool to reply to user using  productImage and productInfo . Only use this tool when you have product image . If you dont have product image, simply reply product information using replyUser tool',
       schema: z.object({
         products: z.array(
           z.object({
