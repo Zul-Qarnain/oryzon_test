@@ -433,6 +433,9 @@ export class ProductsService {
          productIds.push(document._id as string);
        }
     }
+    if (productIds.length === 0) {
+      return null;
+    }
     const products = await this.getAllProducts(
       {
         filter: {
