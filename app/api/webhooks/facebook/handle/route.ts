@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { channelsService } from '@/backend/services/channels/channels.service';
 import { customersService } from '@/backend/services/customers/customers.service';
 import { chatsService } from '@/backend/services/chats/chats.service';
+import { productsService } from '@/backend/services/products/products.service';
+
 // Assuming these are the correct imports from your Facebook Messenger library
 import { FacebookMessageParser, FacebookMessagePayloadMessagingEntry as FacebookMessageObject, FacebookMessagingAPIClient } from 'fb-messenger-bot-api';
 import { Customer } from '@/backend/services/customers/customers.types';
@@ -11,6 +13,7 @@ import { messages } from '@/db/schema';
 import { Chat } from '@/backend/services/chats/chats.types';
 import { executeAgent } from '@/backend/services/ai/manager';
 import { log } from 'console';
+import { formatObjectToString } from '@/backend/services/ai/tools';
 
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -82,6 +85,8 @@ export async function POST(request: NextRequest): Promise<Response> {
                     return response;
                 }
 
+
+
                 if (!channel || !channel.accessToken) {
                     console.error(`Channel not found or no access token for recipientPageId: ${recipientPageId}`);
                     return response;
@@ -143,18 +148,99 @@ export async function POST(request: NextRequest): Promise<Response> {
                 if (fbMessage.message?.attachments) {
                     for (const attachment of fbMessage.message.attachments) {
                         if (attachment.type === 'image' && attachment.payload && 'url' in attachment.payload) {
-                            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
-                                content: attachment.payload.url,
-                                senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
+                            const messageContentHUMAN: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+                                content: `A image with [IMAGE URL]: ${attachment.payload.url}`,
+                                senderType: 'CUSTOMER', // Assuming message from platform user is 'Customer'
                                 contentType: 'IMAGE',
                                 // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
                             };
+                            const messageContentAI: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+                                content: `[SYSTEM_START]: (NOTE THAT IT IS SYSTEM PROMPT , NOT USER REPLY , USED TO GUIDE MY THOUGHTS) USER HAS GIVEN YOU A IMAGE URL (${attachment.payload.url}) AND YOU NEED TO PROCESS IT . AS IT TAKES TIME USER IS NOTFIED TO WAIT FOR A WHILE [SYSTEM_END] 
+                                         Please wait a moment while processing the image. This may take a minute....
+                                `,
+                                senderType: 'BOT', // Assuming message from platform user is 'BOT'
+                                contentType: 'IMAGE',
+                                // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
+                            };
+                            console.log("User sent an image:", attachment.payload.url);
 
                             try {
 
                                 await chatsService.handleNewMessage(
+                                    messageContentHUMAN,
+                                    chat.chatId,
+                                );
+                                await chatsService.handleNewMessage(
+                                    messageContentAI,
+                                    chat.chatId,
+                                );
+                                await messagingClient.sendTextMessage(
+                                    messageSenderPsid,
+                                    `Please wait a moment while processing the image. This may take a minute...`
+                                );
+                                const products = await productsService.getProductByImageURL(attachment.payload.url, channel.business!.businessId);
+                                let result = '';
+                                if (products) {
+
+                                    if (products.length > 1) {
+                                        for (const product of products) {
+                                            result += formatObjectToString(product, 'Product Info') + '\n---\n';
+                                        }
+                                    } else {
+                                        result = formatObjectToString(products[0], 'Product Info');
+                                    }
+                                }
+                                else {
+                                    result = 'No products found for the provided image.';
+                                }
+                                console.log("Product search result:", result);
+                                await messagingClient.markSeen(messageSenderPsid);
+                                await messagingClient.toggleTyping(messageSenderPsid, true);
+                                const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' | "platformMessageId"> = {
+                                    content: `[SYSTEM START] AFTER TELLING USER TO WAIT, THE IMAGE WAS USED TO FIND ANY PRODUCT. SYSTEM ASSUMED THE USER PROVIDED IMAGE FOR PRODUCT SEARCH. IMAGE URL: ${attachment.payload.url}
+                                 --RESULT: ${result}
+                                 THIS SYSTEM MESSAGE IS NOT SEEN BY USER.
+                                [SYSTEM END] `,
+                                    senderType: 'BOT', // Assuming message from platform user is 'BOT'
+                                    contentType: 'TEXT',
+                                    // platformMessageId is intentionally not included here if omitted by chatsService.handleNewMessage
+                                };
+                                const lastMsgs = await chatsService.handleNewMessage(
                                     messageContent,
                                     chat.chatId,
+                                );
+
+                                const replyUserFn = async (msg: unknown) => {
+                                    const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                                    await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                    await messagingClient.toggleTyping(messageSenderPsid, false);
+                                    await chatsService.handleNewMessage(
+                                        { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                        chat.chatId,
+                                    );
+                                }
+
+                                const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
+                                    const content = productInfo
+                                    await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
+                                    await messagingClient.sendTextMessage(messageSenderPsid, content);
+                                    await messagingClient.toggleTyping(messageSenderPsid, false);
+                                    await chatsService.handleNewMessage(
+                                        { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                                        chat.chatId,
+                                    );
+                                }
+
+                                const AIResponse = await executeAgent(
+                                    lastMsgs,
+                                    internalCustomerId,
+                                    channel.channelId,
+                                    channel.business?.description || null,
+                                    channel.business!.businessId,
+                                    customer.address || "",
+                                    replyUserFn,
+                                    replyUserWithProductImageAndInfoFn,
+                                    (ms) => console.log(ms) // Log function to capture messages
                                 );
                             } catch (error) {
                                 console.error(`Failed to send image message to ${messageSenderPsid}:`, error);
@@ -191,7 +277,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                             messageContent,
                             chat.chatId,
                         );
-                        
+
                         const replyUserFn = async (msg: unknown) => {
                             const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
                             await messagingClient.sendTextMessage(messageSenderPsid, content);
@@ -203,7 +289,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                         }
 
                         const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
-                            const content =  productInfo
+                            const content = productInfo
                             await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
                             await messagingClient.sendTextMessage(messageSenderPsid, content);
                             await messagingClient.toggleTyping(messageSenderPsid, false);
@@ -225,53 +311,55 @@ export async function POST(request: NextRequest): Promise<Response> {
                             (ms) => console.log(ms) // Log function to capture messages
                         );
 
-                        } catch (error) {
-                            console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
-                            try {
-                                await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
-                                await messagingClient.toggleTyping(messageSenderPsid, false);
-
-                                return response;
-                            } catch (replyError) {
-                                console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
-                            }
-                        }
-                    } else {
-                        console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.message);
+                    } catch (error) {
+                        console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
                         try {
-                            await messagingClient.sendTextMessage(
-                                messageSenderPsid,
-                                `Received a message of a type we don't fully support yet.`
-                            );
+                            await messagingClient.sendTextMessage(messageSenderPsid, "Sorry, we couldn't process your message at this time.");
                             await messagingClient.toggleTyping(messageSenderPsid, false);
 
                             return response;
-                        } catch (error) {
-                            console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
+                        } catch (replyError) {
+                            console.error(`Failed to send error reply to ${messageSenderPsid}:`, replyError);
                         }
                     }
+                } else {
+                    console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.message);
+                    try {
+                        await messagingClient.sendTextMessage(
+                            messageSenderPsid,
+                            `Received a message of a type we don't fully support yet.`
+                        );
+                        await messagingClient.toggleTyping(messageSenderPsid, false);
 
-                    // }
-
-
-
-
-
-
-
-
-
-
-
+                        return response;
+                    } catch (error) {
+                        console.error(`Failed to send unhandled message type notice to ${messageSenderPsid}:`, error);
+                    }
                 }
+
+                // }
+
+
+
+
+
+
+
+
+
+
 
             }
 
-            return response;
-
-
-        } catch (error) {
-            console.error('Error handling message:', error);
-            return new Response('Internal Server Error', { status: 500 });
         }
+
+        return response;
+
+
+    } catch (error) {
+        console.error('Error handling message:', error);
+        return new Response('Internal Server Error', { status: 500 });
     }
+
+
+}

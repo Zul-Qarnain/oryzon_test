@@ -9,7 +9,7 @@ import { CreateOrderData, UpdateOrderData, CreateOrderItemData } from '@/backend
 import { orderStatusEnum } from '@/db/schema'; // For order status enum
 
 // Helper to format service responses into a structured string .2
-function formatObjectToString(obj: unknown, title: string): string {
+export function formatObjectToString(obj: unknown, title: string): string {
   if (obj === null || obj === undefined) {
     return `${title}: Not found or no data.`;
   }
