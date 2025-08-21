@@ -26,10 +26,16 @@ export interface OrderContextType {
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-export const OrderProvider = ({ children }: { children: ReactNode }) => {
+export const OrderProvider = ({ 
+  children, 
+  order: initialOrder = null 
+}: { 
+  children: ReactNode;
+  order?: OrderWithIncludes | null;
+}) => {
   const { request } = useFetchContext();
   const { FUser } = useUserContext(); // Get FUser from UserContext
-  const [order, setOrder] = useState<OrderWithIncludes | null>(null);
+  const [order, setOrder] = useState<OrderWithIncludes | null>(initialOrder);
   const [orders, setOrders] = useState<OrderWithIncludes[]>([]);
   const [total_order, setTotalOrder] = useState(0);
   const [order_loading, setOrderLoading] = useState(false);

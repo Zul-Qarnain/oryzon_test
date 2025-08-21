@@ -47,9 +47,15 @@ export interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider = ({ children }: { children: ReactNode }) => {
+export const UserProvider = ({ 
+  children, 
+  user: initialUser = null 
+}: { 
+  children: ReactNode;
+  user?: UserWithIncludes | null;
+}) => {
   const { request, setFirebaseToken } = useFetchContext(); // Get request and setFirebaseToken from FetchContext
-  const [user, setUser] = useState<UserWithIncludes | null>(null);
+  const [user, setUser] = useState<UserWithIncludes | null>(initialUser);
   const [FUser, setFUser] = useState<FirebaseUser | null>(null);
   const [users, setUsers] = useState<UserWithIncludes[]>([]);
   const [total_user, setTotalUser] = useState(0);
@@ -82,7 +88,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
 
       if (existingUser) {
-        setUser(existingUser);
+        // Only set user state if no initial user was provided
+        if (!initialUser) {
+          setUser(existingUser);
+        }
         setFUser(firebaseUser);
         return existingUser;
       } else if (operation === 'SIGNUP' || (operation === 'LOGIN' && provider !== 'EMAIL')) {
@@ -105,7 +114,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (createResp.error || !createResp.result) {
           throw new Error(createResp.error || "Failed to create user in backend");
         }
-        setUser(createResp.result);
+        // Only set user state if no initial user was provided
+        if (!initialUser) {
+          setUser(createResp.result);
+        }
         setFUser(firebaseUser);
         return createResp.result;
       } else if (operation === 'LOGIN' && provider === 'EMAIL' && !existingUser) {
@@ -118,12 +130,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await signOut(auth).catch(e => console.error("Firebase signout failed during error handling:", e));
       setFUser(null);
       setFirebaseToken(null);
-      setUser(null);
+      // Only clear user state if no initial user was provided
+      if (!initialUser) {
+        setUser(null);
+      }
       return null;
     } finally {
       setUserLoading(false);
     }
-  }, [request, setFirebaseToken]);
+  }, [request, setFirebaseToken, initialUser]);
 
   // Effect for Firebase Auth state changes
   useEffect(() => {
@@ -134,9 +149,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         try {
           const token = await getIdToken(firebaseUser);
           setFirebaseToken(token);
-          // Attempt to fetch existing user data from backend if not already done by login/signup
-          // This handles cases where user is already logged in (session persistence)
-          if (!user) { // Avoid refetching if user is already set by a login/signup flow
+          // Only attempt to fetch/sync user data if no initial user was provided
+          // and we don't already have a user from login/signup flows
+          if (!initialUser && !user) { 
             console.log("Firebase user detected on auth state change, attempting to sync with backend:", firebaseUser.uid);
             const providerId = firebaseUser.providerData[0]?.providerId;
             let loginProviderValue: typeof loginProviderEnum.enumValues[number] = 'EMAIL'; // Default
@@ -146,22 +161,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
             // This sync will attempt to fetch or create the user.
             // Business creation is handled separately after signup.
-            await syncUserWithBackend(firebaseUser, 'LOGIN', loginProviderValue /*, businessName if available from a persisted state, though unlikely here */);
+            await syncUserWithBackend(firebaseUser, 'LOGIN', loginProviderValue);
           }
         } catch (error) {
           console.error("Error during Firebase auth state change processing:", error);
           setFirebaseToken(null);
-          setUser(null); // Clear backend user if token/sync fails
+          if (!initialUser) {
+            setUser(null); // Only clear backend user if no initial user and token/sync fails
+          }
         }
       } else {
         setFirebaseToken(null);
-        setUser(null);
+        if (!initialUser) {
+          setUser(null);
+        }
         setFUser(null);
       }
       setUserLoading(false);
     });
     return () => unsubscribe();
-  }, [setFirebaseToken, user, syncUserWithBackend]); // Added user and setFirebaseToken to dependencies
+  }, [setFirebaseToken, user, syncUserWithBackend, initialUser]); // Added initialUser to dependencies
 
   const fetchUser = useCallback(async (userId: string, options?: { include?: string }): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
@@ -170,13 +189,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const response = await request<UserWithIncludes>("GET", `/api/users/${userId}${includeQuery}`);
     if (response.error) {
       setErrorUser(response.error);
-      setUser(null);
+      if (!initialUser) {
+        setUser(null);
+      }
     } else {
-      setUser(response.result);
+      // Only update user state if no initial user was provided
+      if (!initialUser) {
+        setUser(response.result);
+      }
     }
     setUserLoading(false);
     return response;
-  }, [request]);
+  }, [request, initialUser]);
 
   const fetchUsers = useCallback(async (options?: { filter?: UserFilter; pagination?: PaginationOptions; include?: string }): Promise<ApiResponse<{ data: UserWithIncludes[]; total: number }>> => {
     setUserLoading(true);
@@ -222,15 +246,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (response.error) {
       setErrorUser(response.error);
     } else {
-      setUser(response.result); // Set the created user as the current user
-      if (response.result) { // Also add/update in the local list of users
+      // Only update user state if no initial user was provided
+      if (!initialUser) {
+        setUser(response.result); // Set the created user as the current user
+      }
+      if (response.result) { // Always add/update in the local list of users
         setUsers(prevUsers => [response.result!, ...prevUsers.filter(u => u.userId !== response.result!.userId)]);
         setTotalUser(prevTotal => prevTotal + 1); // Assuming new user means total increases
       }
     }
     setUserLoading(false);
     return response;
-  }, [request]);
+  }, [request, initialUser]);
 
   const updateUser = useCallback(async (userId: string, data: UpdateUserData): Promise<ApiResponse<UserWithIncludes>> => {
     setUserLoading(true);
@@ -239,11 +266,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (response.error) {
       setErrorUser(response.error);
     } else {
-      setUser(response.result); // Update current user if it's the one being updated
+      // Only update current user state if no initial user was provided or if it's the same user
+      if (!initialUser || (initialUser && user?.userId === userId)) {
+        setUser(response.result); // Update current user if it's the one being updated
+      }
+      // Always update in the users list
+      if (response.result) {
+        setUsers(prevUsers => 
+          prevUsers.map(u => u.userId === userId ? response.result! : u)
+        );
+      }
     }
     setUserLoading(false);
     return response;
-  }, [request]);
+  }, [request, initialUser, user]);
 
   const deleteUser = useCallback(async (userId: string): Promise<ApiResponse<null>> => {
     setUserLoading(true);
@@ -252,11 +288,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (response.error) {
       setErrorUser(response.error);
     } else {
-      setUser(null); // Clear user if the current user was deleted
+      // Only clear current user if no initial user was provided or if it's the same user being deleted
+      if (!initialUser || (user?.userId === userId)) {
+        setUser(null); // Clear user if the current user was deleted
+      }
+      // Always remove from users list
+      setUsers(prevUsers => prevUsers.filter(u => u.userId !== userId));
+      setTotalUser(prevTotal => Math.max(0, prevTotal - 1));
     }
     setUserLoading(false);
     return response;
-  }, [request]);
+  }, [request, initialUser, user]);
 
   const cleanError_User = useCallback(() => setErrorUser(null), []);
 

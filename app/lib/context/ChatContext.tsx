@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Chat, ChatWithIncludes, GetAllChatsOptions, CreateChatData, UpdateChatData } from "@/backend/services/chats/chats.types"; // Added CreateChatData, UpdateChatData
+import { BusinessWithRelations } from "@/backend/services/businesses/businesses.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
 
@@ -25,10 +26,16 @@ export interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export const ChatProvider = ({ children }: { children: ReactNode }) => {
+export const ChatProvider = ({ 
+  children, 
+  chat: initialChat = null 
+}: { 
+  children: ReactNode;
+  chat?: ChatWithIncludes | null;
+}) => {
   const { request } = useFetchContext();
   const { FUser } = useUserContext(); // Get FUser from UserContext
-  const [chat, setChat] = useState<ChatWithIncludes | null>(null);
+  const [chat, setChat] = useState<ChatWithIncludes | null>(initialChat);
   const [chats, setChats] = useState<ChatWithIncludes[]>([]);
   const [total_chat, setTotalChat] = useState(0);
   const [chat_loading, setChatLoading] = useState(false);

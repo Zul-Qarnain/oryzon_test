@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { ConnectedChannel, ConnectedChannelWithIncludes, CreateChannelData } from "@/backend/services/channels/channels.types";
 import type { ChannelFilterOptions as ChannelFilter } from "@/backend/services/channels/channels.types";
+import { BusinessWithRelations } from "@/backend/services/businesses/businesses.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
 
@@ -26,10 +27,16 @@ export interface ChannelContextType {
 
 const ChannelContext = createContext<ChannelContextType | undefined>(undefined);
 
-export const ChannelProvider = ({ children }: { children: ReactNode }) => {
+export const ChannelProvider = ({ 
+  children, 
+  channel: initialChannel = null 
+}: { 
+  children: ReactNode;
+  channel?: ConnectedChannelWithIncludes | null;
+}) => {
   const { request } = useFetchContext();
   const { FUser } = useUserContext(); // Get FUser from UserContext
-  const [channel, setChannel] = useState<ConnectedChannelWithIncludes | null>(null);
+  const [channel, setChannel] = useState<ConnectedChannelWithIncludes | null>(initialChannel);
   const [channels, setChannels] = useState<ConnectedChannelWithIncludes[]>([]);
   const [total_channel, setTotalChannel] = useState(0);
   const [channel_loading, setChannelLoading] = useState(false);

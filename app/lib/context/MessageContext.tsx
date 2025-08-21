@@ -25,9 +25,15 @@ export interface MessageContextType {
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
 
-export const MessageProvider = ({ children }: { children: ReactNode }) => {
+export const MessageProvider = ({
+  children,
+  message: initialMessage = null
+}: {
+  children: ReactNode;
+  message?: MessageWithIncludes | null;
+}) => {
   const { request } = useFetchContext();
-  const [message, setMessage] = useState<MessageWithIncludes | null>(null);
+  const [message, setMessage] = useState<MessageWithIncludes | null>(initialMessage);
   const [messages, setMessages] = useState<MessageWithIncludes[]>([]);
   const [total_message, setTotalMessage] = useState(0);
   const [message_loading, setMessageLoading] = useState(false);

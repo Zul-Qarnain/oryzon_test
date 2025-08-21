@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Product, ProductWithIncludes, CreateProductData } from "@/backend/services/products/products.types"; // Added CreateProductData
 import type { ProductFilterOptions as ProductFilter } from "@/backend/services/products/products.types";
+import { BusinessWithRelations } from "@/backend/services/businesses/businesses.types";
 import { useFetchContext, ApiResponse } from "./FetchContext";
 import { useUserContext } from "./UserContext"; // Import useUserContext
 import {upload} from '@imagekit/javascript'
@@ -30,10 +31,16 @@ export interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
-export const ProductProvider = ({ children }: { children: ReactNode }) => {
+export const ProductProvider = ({ 
+  children, 
+  product: initialProduct = null 
+}: { 
+  children: ReactNode;
+  product?: ProductWithIncludes | null;
+}) => {
   const { request } = useFetchContext();
   const { FUser } = useUserContext(); // Get FUser from UserContext
-  const [product, setProduct] = useState<ProductWithIncludes | null>(null);
+  const [product, setProduct] = useState<ProductWithIncludes | null>(initialProduct);
   const [products, setProducts] = useState<ProductWithIncludes[]>([]);
   const [total_product, setTotalProduct] = useState(0);
   const [product_loading, setProductLoading] = useState(false);

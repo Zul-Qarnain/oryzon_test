@@ -17,7 +17,6 @@ import { DataAPIClient, DataAPIVector, vector } from "@datastax/astra-db-ts";
 
 
 const client = new DataAPIClient(process.env.ASTRA_TOKEN);
-console.log(process.env.ASTRA_TOKEN)
 const database = client.db('https://bdadc1d5-436e-41bf-a36e-6fe4a1235b6b-us-east-2.apps.astra.datastax.com', { keyspace: "default_keyspace" });
 const imageCollection = database.collection("image_embedding_store");
 const textCollection = database.collection("text_embedding_store");
@@ -59,7 +58,6 @@ export class ProductsService {
       }
 
       const data = await response.json();
-      console.log(typeof data.data[0]?.embedding)
       return (Array.isArray(imageUrl) ? data.data.map((item: { embedding: number[] }) => item.embedding) : data.data[0]?.embedding) || null
     } catch (error) {
       console.error('Error generating image embedding:', error);
@@ -141,6 +139,9 @@ export class ProductsService {
   }
 
   async getProductById(productId: string, options?: GetProductByIdOptions): Promise<ProductWithIncludes | null> {
+    //  console.log("heheh")
+    // await this.getProductByImageURL("https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-142832910.jpg", "69caedb1-aa66-4d74-95aa-de5a761d64d8");
+
     const query = db.query.products.findFirst({
       where: eq(products.productId, productId),
       with: {
@@ -169,7 +170,15 @@ export class ProductsService {
     const filter: ProductFilterOptions | undefined = options?.filter;
     const conditions = [];
 
+   
+    if(filter?.id) { // Filter by productId
+      conditions.push(eq(products.productId, filter.id));
+    }
 
+
+    if(filter?.ids && filter.ids.length > 0) { // Filter by multiple productIds
+      conditions.push(inArray(products.productId, filter.ids as string[]));
+    } 
     if (filter?.name) {
       conditions.push(ilike(products.name, `%${filter.name}%`));
     }
@@ -362,21 +371,21 @@ export class ProductsService {
     }
 
 
-    const textEmbedding = await this.generateTextEmbedding(keyword, true);
+    // const textEmbedding = await this.generateTextEmbedding(keyword, true);
 
-    if (!textEmbedding) {
-      throw new Error("Failed to generate text embedding");
-    }
-    console.log(textEmbedding.length)
+    // if (!textEmbedding) {
+    //   throw new Error("Failed to generate text embedding");
+    // }
+    // console.log(textEmbedding.length)
 
 
-    // Find rows
-    const cursor = textCollection.find({}, { sort: { $vector: textEmbedding as number[] }, includeSimilarity: true });
+    // // Find rows
+    // const cursor = textCollection.find({}, { sort: { $vector: textEmbedding as number[] }, includeSimilarity: true });
 
-    // Iterate over the found documents
-    for await (const document of cursor) {
-      console.log(document);
-    }
+    // // Iterate over the found documents
+    // for await (const document of cursor) {
+    //   console.log(document);
+    // }
 
     const productsQuery = db.query.products.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
@@ -405,6 +414,37 @@ export class ProductsService {
   }
 
 
+  async getProductByImageURL(imageURL: string,businessId: string): Promise<ProductWithIncludes[]| null> {
+    const productIds: string[] = [];
+    const imageEmbedding = await this.generateImageEmbedding(imageURL, true);
+
+    if (!imageEmbedding) {
+      throw new Error("Failed to generate image embedding");
+    }
+    console.log(imageEmbedding.length)
+
+
+    // Find rows
+    const cursor = imageCollection.find({}, { sort: { $vector: imageEmbedding as number[] }, includeSimilarity: true });
+
+    // Iterate over the found documents
+    for await (const document of cursor) {
+       if (document && document.$similarity &&  document.$similarity >= .80) {
+         productIds.push(document._id as string);
+       }
+    }
+    const products = await this.getAllProducts(
+      {
+        filter: {
+          ids: productIds,
+          businessId: businessId
+        }
+      }
+    )
+    console.log(products.data);
+    return products.data.length > 0 ? products.data : null;
+
+  }
 
 }
 

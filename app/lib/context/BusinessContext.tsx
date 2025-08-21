@@ -35,10 +35,16 @@ export interface BusinessContextType {
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
 
-export const BusinessProvider = ({ children }: { children: ReactNode }) => {
+export const BusinessProvider = ({ 
+  children, 
+  business: initialBusiness = null 
+}: { 
+  children: ReactNode;
+  business?: BusinessWithRelations | null;
+}) => {
   const { request } = useFetchContext();
   const { FUser } = useUserContext(); 
-  const [business, setBusiness] = useState<BusinessWithRelations | null>(null);
+  const [business, setBusiness] = useState<BusinessWithRelations | null>(initialBusiness);
   const [businesses, setBusinesses] = useState<BusinessWithRelations[]>([]);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const [businessLoading, setBusinessLoading] = useState(false);

@@ -18,6 +18,7 @@ export interface ProductIncludeOptions {
 // Options for GetById
 export interface GetProductByIdOptions {
   include?: ProductIncludeOptions;
+
 }
 
 // Options for GetAll
@@ -48,7 +49,9 @@ export interface UpdateManyProductsData {
 
 // Filter options for operations like updateMany or deleteMany
 export interface ProductFilterOptions {
+  id?: Product['productId'];
   ids?: Product['productId'][];
+
   businessId?: Business['businessId'];
   providerUserId?: User['providerUserId'] | null;
   name?: Product['name'];
