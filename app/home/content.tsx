@@ -42,8 +42,12 @@ const HomeContent: React.FC = () => {
     // This state might be briefly visible before redirection or if redirection fails.
      if (!user) {
       return (
-        <div className="flex min-h-screen items-center justify-center">
-          <p>Redirecting to login...</p>
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg-page)]">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-[var(--icon-accent-primary)]" />
+            <p className="text-lg font-medium text-[var(--text-on-dark-primary)]">Authenticating...</p>
+            <p className="text-sm text-[var(--text-on-dark-muted)]">Please wait while we verify your credentials</p>
+          </div>
         </div>
       );
     }
