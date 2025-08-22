@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { ConnectedChannel, ConnectedChannelWithIncludes, CreateChannelData } from "@/backend/services/channels/channels.types";
 import type { ChannelFilterOptions as ChannelFilter } from "@/backend/services/channels/channels.types";
 import { BusinessWithRelations } from "@/backend/services/businesses/businesses.types";
@@ -41,6 +41,12 @@ export interface ChannelContextType {
 
 const ChannelContext = createContext<ChannelContextType | undefined>(undefined);
 
+// Utility function to detect mobile devices
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export const ChannelProvider = ({
   children,
   channel: initialChannel = null
@@ -58,6 +64,89 @@ export const ChannelProvider = ({
   const [facebookPages, setFacebookPages] = useState<FacebookPage[]>([]);
   const [fb_loading, setFbLoading] = useState(false);
   const [userAccessToken, setUserAccessToken] = useState<string | null>(null);
+
+  // Check for Facebook auth result on component mount (for mobile redirect flow)
+  useEffect(() => {
+    const checkFacebookAuthResult = async () => {
+      const authResult = localStorage.getItem('facebook_auth_result');
+      if (authResult) {
+        localStorage.removeItem('facebook_auth_result');
+        const { code, error } = JSON.parse(authResult);
+        alert("auth result found")
+        if (code) {
+          setFbLoading(true);
+          try {
+            await handleFacebookAuthSuccess(code);
+          } catch (err) {
+            setErrorChannel(`Failed to process Facebook auth: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          }
+          setFbLoading(false);
+        } else if (error) {
+          setErrorChannel('Facebook login was cancelled or failed');
+        }
+      }
+    };
+
+    checkFacebookAuthResult();
+  }, []);
+
+  const handleFacebookAuthSuccess = async (code: string) => {
+    try {
+      // Exchange code for access token using our backend
+      const tokenResponse = await fetch('/api/auth/facebook/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: code,
+          redirectUri: window.location.origin + '/auth/facebook/callback'
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to exchange code for token');
+      }
+
+      const { access_token } = await tokenResponse.json();
+      setUserAccessToken(access_token);
+
+      // Set access token in local storage
+      localStorage.setItem('facebook_access_token', access_token);
+
+      // Fetch user's Facebook pages
+      const pagesResponse = await fetch(
+        `https://graph.facebook.com/v19.0/me/accounts?access_token=${access_token}&fields=id,name,access_token,category,tasks`
+      );
+
+      if (!pagesResponse.ok) {
+        throw new Error('Failed to fetch Facebook pages');
+      }
+
+      const pagesData = await pagesResponse.json();
+
+      if (pagesData.data) {
+        const pages: FacebookPage[] = pagesData.data.map((page: {
+          id: string;
+          name: string;
+          access_token: string;
+          category?: string;
+          tasks?: string[];
+        }) => ({
+          id: page.id,
+          name: page.name,
+          access_token: page.access_token,
+          category: page.category,
+          tasks: page.tasks
+        }));
+        setFacebookPages(pages);
+      } else {
+        setErrorChannel('No Facebook pages found');
+      }
+    } catch (error) {
+      throw new Error(`Failed to fetch Facebook pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
 
   const fetchChannel = useCallback(async (channelId: string, options?: { include?: string }): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
     setChannelLoading(true);
@@ -190,104 +279,67 @@ export const ChannelProvider = ({
 
       const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&state=${Date.now()}`;
 
-      // Open popup window for Facebook login
-      const popup = window.open(
-        authUrl,
-        'facebook-login',
-        'width=600,height=600,scrollbars=yes,resizable=yes'
-      );
+      const isMobile = isMobileDevice();
 
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
+      if (isMobile) {
+        // For mobile: Store current URL and redirect to Facebook
+        localStorage.setItem('facebook_auth_return_url', window.location.href);
+        window.location.href = authUrl;
+      } else {
+        // For desktop: Use popup window
+        const popup = window.open(
+          authUrl,
+          'facebook-login',
+          'width=600,height=600,scrollbars=yes,resizable=yes'
+        );
 
-      // Listen for popup messages
-      const handleMessage = async (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-
-        if (event.data.type === 'FACEBOOK_AUTH_SUCCESS' && event.data.code) {
-          window.removeEventListener('message', handleMessage);
-          popup.close();
-
-          try {
-            // Exchange code for access token using our backend
-            const tokenResponse = await fetch('/api/auth/facebook/token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                code: event.data.code,
-                redirectUri: window.location.origin + '/auth/facebook/callback'
-              }),
-            });
-
-            if (!tokenResponse.ok) {
-              throw new Error('Failed to exchange code for token');
-            }
-
-            const { access_token } = await tokenResponse.json();
-            setUserAccessToken(access_token);
-
-            // Set access token in local storage or state if needed
-            localStorage.setItem('facebook_access_token', access_token);
-
-            // Fetch user's Facebook pages
-            setFbLoading(true);
-            // Fetch user's pages using Facebook Graph API
-            const pagesResponse = await fetch(
-              `https://graph.facebook.com/v19.0/me/accounts?access_token=${access_token}&fields=id,name,access_token,category,tasks`
-
-            );
-
-            if (!pagesResponse.ok) {
-              throw new Error('Failed to fetch Facebook pages');
-            }
-
-            const pagesData = await pagesResponse.json();
-
-            if (pagesData.data) {
-              const pages: FacebookPage[] = pagesData.data.map((page: {
-                id: string;
-                name: string;
-                access_token: string;
-                category?: string;
-                tasks?: string[];
-              }) => ({
-                id: page.id,
-                name: page.name,
-                access_token: page.access_token,
-                category: page.category,
-                tasks: page.tasks
-              }));
-              setFacebookPages(pages);
-            } else {
-              setErrorChannel('No Facebook pages found');
-            }
-
-          } catch (error) {
-            setErrorChannel(`Failed to fetch Facebook pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-
-          setFbLoading(false);
-        } else if (event.data.type === 'FACEBOOK_AUTH_ERROR') {
-          window.removeEventListener('message', handleMessage);
-          popup.close();
-          setErrorChannel('Facebook login was cancelled or failed');
-          setFbLoading(false);
+        if (!popup) {
+          throw new Error('Popup blocked. Please allow popups for this site.');
         }
-      };
 
-      window.addEventListener('message', handleMessage);
+        // Listen for popup messages
+        const handleMessage = async (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
 
+          if (event.data.type === 'FACEBOOK_AUTH_SUCCESS' && event.data.code) {
+            window.removeEventListener('message', handleMessage);
+            popup.close();
 
+            try {
+              await handleFacebookAuthSuccess(event.data.code);
+            } catch (error) {
+              setErrorChannel(`Failed to fetch Facebook pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
 
+            setFbLoading(false);
+          } else if (event.data.type === 'FACEBOOK_AUTH_ERROR') {
+            window.removeEventListener('message', handleMessage);
+            popup.close();
+            setErrorChannel('Facebook login was cancelled or failed');
+            setFbLoading(false);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        // Also listen for popup being closed manually
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            window.removeEventListener('message', handleMessage);
+            if (fb_loading) {
+              setErrorChannel('Facebook login was cancelled');
+              setFbLoading(false);
+            }
+          }
+        }, 1000);
+      }
 
     } catch (error) {
       setErrorChannel(`Failed to initialize Facebook login: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setFbLoading(false);
     }
-  }, []);
+  }, [fb_loading]);
 
   const createChannelFromFacebookPage = useCallback(
     async (page: FacebookPage, businessId: string, userAccessTokenz: string | null): Promise<ApiResponse<ConnectedChannelWithIncludes>> => {
@@ -338,8 +390,6 @@ export const ChannelProvider = ({
 
       const subscribeResult = subscribeResponse.result?.data;
       console.log('Facebook page subscription successful:', subscribeResult);
-
-
 
       // Create channel in our backend
       const response = await request<ConnectedChannelWithIncludes>("POST", "/api/channels", channelData);

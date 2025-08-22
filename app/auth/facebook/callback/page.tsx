@@ -11,23 +11,50 @@ function FacebookCallbackContent() {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
 
-    if (code) {
-      // Send success message to parent window
-      window.opener?.postMessage({
-        type: 'FACEBOOK_AUTH_SUCCESS',
-        code: code
-      }, window.location.origin);
-    } else if (error) {
-      // Send error message to parent window
-      window.opener?.postMessage({
-        type: 'FACEBOOK_AUTH_ERROR',
-        error: error,
-        errorDescription: errorDescription
-      }, window.location.origin);
-    }
+    // Check if this is a popup (has opener) or a redirect (no opener)
+    const isPopup = window.opener !== null;
 
-    // Close the popup window
-    window.close();
+    if (isPopup) {
+      // Desktop popup flow
+      if (code) {
+        // Send success message to parent window
+        window.opener?.postMessage({
+          type: 'FACEBOOK_AUTH_SUCCESS',
+          code: code
+        }, window.location.origin);
+      } else if (error) {
+        // Send error message to parent window
+        window.opener?.postMessage({
+          type: 'FACEBOOK_AUTH_ERROR',
+          error: error,
+          errorDescription: errorDescription
+        }, window.location.origin);
+      }
+
+      // Close the popup window
+      window.close();
+    } else {
+      // Mobile redirect flow
+      if (code || error) {
+        // Store the result in localStorage for the main app to pick up
+        const authResult = {
+          code: code,
+          error: error,
+          errorDescription: errorDescription
+        };
+        localStorage.setItem('facebook_auth_result', JSON.stringify(authResult));
+
+        // Redirect back to the original URL
+        const returnUrl = localStorage.getItem('facebook_auth_return_url');
+        if (returnUrl) {
+          localStorage.removeItem('facebook_auth_return_url');
+          window.location.href = returnUrl;
+        } else {
+          // Fallback to home page if no return URL
+          window.location.href = '/';
+        }
+      }
+    }
   }, [searchParams]);
 
   return (
