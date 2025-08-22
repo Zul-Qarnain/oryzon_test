@@ -240,7 +240,7 @@ Before creating order, ALWAYS show complete summary:
 
 Remember: You represent the business professionally. Every interaction should build trust, provide value, and create a positive customer experience that encourages repeat business and referrals.`;
 
-export const generateSystemPrompt = (businessDescription?: string | null): string => {
+export const generateSystemPrompt = (businessDescription?: string | null, customerInfo?: string | null): string => {
   let prompt = baseSystemPrompt + examples;
   
   if (businessDescription && businessDescription.trim() !== "") {
@@ -253,6 +253,19 @@ export const generateSystemPrompt = (businessDescription?: string | null): strin
   } else {
     prompt += `\n\n## BUSINESS CONTEXT:
 No specific business description provided. Focus on general e-commerce best practices while maintaining professional customer service standards.`;
+  }
+
+  if (customerInfo && customerInfo.trim() !== "") {
+    prompt += `\n\n## CUSTOMER CONTEXT:\n${customerInfo}`;
+    prompt += `\n\nUse this customer information to:
+- First Ask customer if he want to use this info when he makes any order
+-if he want give new info then use it.
+-if customer name start with User like something then , do address with this name
+-Never address customer with name. Use "Sir" 
+- Show understanding of customer's needs and context`;
+  } else {
+    prompt += `\n\n## CUSTOMER CONTEXT:
+No specific customer information provided. Treat each interaction as a new customer engagement while maintaining a friendly and professional tone.`;
   }
   
   prompt += `\n\n## FINAL REMINDERS:

@@ -108,7 +108,11 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
 
         const internalCustomerId = customer.customerId;
-
+        const customerInfo = `
+                Name: ${customer.fullName}
+                Contact: ${customer.contact ? customer.contact : "No contact available. If make any order ask contact number."}
+                Address: ${customer.address ? customer.address : "No address available. If make any order ask address."}
+                `;
         // 3. Initialize Messaging Client
         // This instantiation depends on the actual Facebook Messenger library being used.
 
@@ -155,6 +159,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                     channel.business?.description || null,
                     channel.business!.businessId,
                     customer.address || "",
+                    customerInfo,
                     replyUserFn,
                     replyUserWithProductImageAndInfoFn,
                     (ms) => console.log(ms) // Log function to capture messages
@@ -165,11 +170,11 @@ export async function POST(request: NextRequest): Promise<Response> {
                 return new Response("ERROR_PROCESSING_MESSAGE", { status: 500 });
             }
         } else if (fbMessage.content.image) {
-            
+
 
         }
-        
-        
+
+
         else {
             console.log(`Received unhandled message type from ${messageSenderPsid}:`, fbMessage.content);
             return new Response("UNHANDLED_MESSAGE_TYPE", { status: 400 });

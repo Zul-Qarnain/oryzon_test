@@ -16,8 +16,9 @@ export async function handleNewMessageFromPlatform(
     fbMessage: FacebookMessageObject, // The parsed message object from Facebook
     senderPlatformId: string // The PSID of the user who sent the message
 ): Promise<void> {
-   if (senderPlatformId === recipientPageId) { // The message is from your page itself (bot) 
-       return; }
+    if (senderPlatformId === recipientPageId) { // The message is from your page itself (bot) 
+        return;
+    }
 
     // 1. Find ConnectedChannel using recipientPageId
     let channel: ConnectedChannelWithIncludes | undefined;
@@ -52,7 +53,7 @@ export async function handleNewMessageFromPlatform(
     // 2. Find or create Customer using senderPlatformId
 
     let customer: Customer | null = channel.customers?.[0] || null;
-    let chat:Chat | null = channel.chats?.[0] || null;
+    let chat: Chat | null = channel.chats?.[0] || null;
 
     if (!customer) {
         try {
@@ -70,7 +71,7 @@ export async function handleNewMessageFromPlatform(
 
     }
 
-    if(!chat) {
+    if (!chat) {
         try {
             chat = await chatsService.createChat({
                 platformCustomerId: senderPlatformId,
@@ -86,7 +87,11 @@ export async function handleNewMessageFromPlatform(
     }
 
     const internalCustomerId = customer.customerId;
-
+    const customerInfo = `
+                Name: ${customer.fullName}
+                Contact: ${customer.contact ? customer.contact : "No contact available. If make any order ask contact number."}
+                Address: ${customer.address ? customer.address : "No address available. If make any order ask address."}
+                `;
     // 3. Initialize Messaging Client
     // This instantiation depends on the actual Facebook Messenger library being used.
     const messagingClient = new FacebookMessagingAPIClient(accessToken);
@@ -132,51 +137,52 @@ export async function handleNewMessageFromPlatform(
         const platformMessageId = fbMessage.message.mid; // Facebook's message ID
 
         try {
-            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp' > = {
+            const messageContent: Omit<typeof messages.$inferInsert, 'messageId' | 'chatId' | 'timestamp'> = {
                 content: text,
                 senderType: 'CUSTOMER', // Assuming message from platform user is 'CUSTOMER'
                 contentType: 'TEXT',
                 platformMessageId: platformMessageId, // Include platformMessageId if needed
             };
-           const lastMsgs = await chatsService.handleNewMessage(
+            const lastMsgs = await chatsService.handleNewMessage(
                 messageContent,
                 chat.chatId,
             );
 
-              const replyUserFn = async (msg: unknown) => {
-                                        const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
-                                        await messagingClient.sendTextMessage(messageSenderPsid, content);
-                                        await messagingClient.toggleTyping(messageSenderPsid, false);
-                                        await chatsService.handleNewMessage(
-                                            { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
-                                            chat.chatId,
-                                        );
-                                    }
-            
-                                    const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
-                                        const content =  productInfo
-                                        await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
-                                        await messagingClient.sendTextMessage(messageSenderPsid, content);
-                                        await messagingClient.toggleTyping(messageSenderPsid, false);
-                                        await chatsService.handleNewMessage(
-                                            { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
-                                            chat.chatId,
-                                        );
-                                    }
-            
-                                    const AIResponse = await executeAgent(
-                                        lastMsgs,
-                                        internalCustomerId,
-                                        channel.channelId,
-                                        channel.business?.description || null,
-                                        channel.business!.businessId,
-                                        customer.address || "",
-                                        replyUserFn,
-                                        replyUserWithProductImageAndInfoFn,
-                                        (ms) => console.log(ms) // Log function to capture messages
-                                    );
-            
-       
+            const replyUserFn = async (msg: unknown) => {
+                const content = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                await messagingClient.sendTextMessage(messageSenderPsid, content);
+                await messagingClient.toggleTyping(messageSenderPsid, false);
+                await chatsService.handleNewMessage(
+                    { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                    chat.chatId,
+                );
+            }
+
+            const replyUserWithProductImageAndInfoFn = async (productImageURL: string, productInfo: string) => {
+                const content = productInfo
+                await messagingClient.sendImageMessage(messageSenderPsid, productImageURL);
+                await messagingClient.sendTextMessage(messageSenderPsid, content);
+                await messagingClient.toggleTyping(messageSenderPsid, false);
+                await chatsService.handleNewMessage(
+                    { content, senderType: 'BOT', contentType: 'TEXT', platformMessageId: undefined }, // No platformMessageId for bot messages
+                    chat.chatId,
+                );
+            }
+
+            const AIResponse = await executeAgent(
+                lastMsgs,
+                internalCustomerId,
+                channel.channelId,
+                channel.business?.description || null,
+                channel.business!.businessId,
+                customer.address || "",
+                customerInfo,
+                replyUserFn,
+                replyUserWithProductImageAndInfoFn,
+                (ms) => console.log(ms) // Log function to capture messages
+            );
+
+
         } catch (error) {
             console.error(`Failed to handle new text message via chatsService for customer ${internalCustomerId}:`, error);
             try {

@@ -100,6 +100,8 @@ const NewOrderContent: React.FC = () => {
       orderStatus: orderStatus as Order['orderStatus'],
       shippingAddress: shippingAddress.trim(),
       orderItems: parsedOrderItems,
+      customerContact: '', // Optionally, you can add a field in the form for customer contact
+      customerName: '', // Optionally, you can add a field in the form for customer name
     };
 
     const response = await createOrder(orderPayload);
