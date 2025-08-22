@@ -32,6 +32,8 @@ export class OrdersService {
           totalAmount: data.totalAmount,
           currency: data.currency,
           shippingAddress: data.shippingAddress,
+          customerContact: data.customerContact,
+          customerName: data.customerName,
         })
         .returning();
 
@@ -55,6 +57,9 @@ export class OrdersService {
         .update(customers)
         .set({
           address: sql`CASE WHEN ${customers.address} != ${data.shippingAddress} THEN ${data.shippingAddress} ELSE ${customers.address} END`, // Update address only if it's empty
+          contact: sql`CASE WHEN ${customers.contact} != ${data.customerContact} THEN ${data.customerContact} ELSE ${customers.contact} END`, // Update contact only if it's empty
+          fullName: sql`CASE WHEN ${customers.fullName} != ${data.customerName} THEN ${data.customerName} ELSE ${customers.fullName} END`, // Update name only if it's empty
+          updatedAt: new Date(),
         })
         .where(eq(customers.customerId, data.customerId));
       // Fetch the full order with items to return

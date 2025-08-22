@@ -19,7 +19,7 @@ export const platformTypeEnum = pgEnum('platform_type', ['FACEBOOK_PAGE', 'INSTA
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED']);
 export const chatStatusEnum = pgEnum('chat_status', ['OPEN', 'CLOSED_BY_BOT', 'CLOSED_BY_AGENT', 'ARCHIVED']);
 export const messageSenderTypeEnum = pgEnum('message_sender_type', ['BOT', 'CUSTOMER', 'AGENT']);
-export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'IMAGE',  'AUDIO',]);
+export const messageContentTypeEnum = pgEnum('message_content_type', ['TEXT', 'IMAGE', 'AUDIO',]);
 export const chatTypeEnum = pgEnum('chat_type', ['real', 'test']);
 // Tables
 export const users = pgTable('users', {
@@ -69,6 +69,8 @@ export const customers = pgTable('customers', {
   platformCustomerId: text('platform_customer_id').notNull(),
   fullName: text('full_name'),
   address: text('address').default(""),
+  contact: text('contact').default(""),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   profilePictureUrl: text('profile_picture_url'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
@@ -105,6 +107,8 @@ export const orders = pgTable('orders', {
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
   shippingAddress: text('shipping_address').notNull(),
+  customerContact: text('customer_contact').notNull(),
+  customerName: text('customer_name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -137,8 +141,8 @@ export const messages = pgTable('messages', {
   content: text('content').notNull(),
   timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
   platformMessageId: text('platform_message_id'),
-  totalTimeTaken: decimal("total_time_taken",{ precision: 10, scale: 2 }).default("0"),
-  cost: decimal("cost",{ precision: 10, scale: 2 }).default("0"),
+  totalTimeTaken: decimal("total_time_taken", { precision: 10, scale: 2 }).default("0"),
+  cost: decimal("cost", { precision: 10, scale: 2 }).default("0"),
 });
 
 // Relations

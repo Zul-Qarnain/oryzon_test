@@ -106,15 +106,18 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Total amount must be a valid number string.").describe('Total amount for the order (e.g., "100.50").'),
     currency: z.string().length(3).describe('Currency code for the order (e.g., "USD").'),
     orderStatus: z.enum(orderStatusEnum.enumValues).optional().default('PENDING').describe('Status of the order.'),
-    shippingAddress: z.string().optional().describe('Shipping address for the order.'),
-    billingAddress: z.string().optional().describe('Billing address for the order.'),
+    shippingAddress: z.string().describe('Shipping address for the order.'),
+    // customerContact and customerName can be optionally added here if needed in order creation via AI tools
+    customerContact: z.string().describe('Contact information of the customer.'),
+    customerName: z.string().describe('Name of the customer.'),
   });
 
   const updateOrderInfoSchema = z.object({
     orderId: z.string().describe('The ID of the order to update.'),
     orderStatus: z.enum(orderStatusEnum.enumValues).optional().describe('New status of the order.'),
     shippingAddress: z.string().optional().describe('New shipping address.'),
-    billingAddress: z.string().optional().describe('New billing address.'),
+    customerContact: z.string().optional().describe('New contact information of the customer.'),
+    customerName: z.string().optional().describe('New name of the customer.'),
   });
 
   const getProductByKeywordSchema = z.object({
@@ -261,7 +264,9 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       customerId,
       channelId: connectedPageID,
       businessId,
-      shippingAddress: orderParams.shippingAddress || address, // Use the provided address or fallback to the default address
+      shippingAddress: orderParams.shippingAddress || address,
+      customerContact: orderParams.customerContact, // Default to empty string if not provided
+      customerName: orderParams.customerName , // Default to empty string if not provided
     };
     const newOrder = await ordersService.createOrder(orderData);
     let result = "Create Order Result: \n"
@@ -438,7 +443,9 @@ export const getAITools = (customerId: string, connectedPageID: string, business
         - totalAmount (string, required): Total amount for the order (e.g., "100.50").
         - currency (string, required, 3 letters): Currency code for the totalAmount (e.g., "USD").
         - orderStatus (optional, default 'PENDING'): Can be 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED'.
-        - shippingAddress (string): ${address == "" ? 'You must ask for the shipping address to the user. It is mendatory to create the order' : 'User already provided the shipping address in past. The address is ' + address + ' . Show this address to user and politly ask if he wants to change it? If not go with it or if he provide use the updated one'}`,
+        - shippingAddress (string, required): ${address == "" ? 'You must ask for the shipping address to the user. It is mendatory to create the order' : 'User already provided the shipping address in past. The address is ' + address + ' . Show this address to user and politly ask if he wants to change it? If not go with it or if he provide use the updated one'}
+        - customerContact (string, required): Customer phone number. If you have customer phone number already then ask the customer with that number , if he prefer to keep the number or he enter new one.
+        - customerName (string, required): Name of the customer. If you have customer name already then ask the customer with that name , if he prefer to keep the name or he enter new one.`,
       schema: createOrderSchema,
     }),
 
@@ -446,7 +453,11 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       name: 'updateOrderInfo',
       description: `Update an existing order for the current customer on this channel. Ask the user for the Order ID or you may find in previous chats and the fields to update:
         - orderStatus: New status ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED').
-        - shippingAddress (string): New shipping address.`,
+        - shippingAddress (string): New shipping address.
+        - customerContact (string): New contact information of the customer.
+        - customerName (string): New name of the customer.
+
+        Note: Only provide the fields you want to update.`,
       schema: updateOrderInfoSchema,
     }),
 
