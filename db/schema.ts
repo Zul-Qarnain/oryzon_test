@@ -65,7 +65,7 @@ export const customers = pgTable('customers', {
   customerId: uuid('customer_id').primaryKey().defaultRandom(),
   businessId: uuid('business_id').notNull().references(() => businesses.businessId),
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
-  channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
+  channelId: uuid('channel_id').references(() => connectedChannels.channelId),
   platformCustomerId: text('platform_customer_id').notNull(),
   fullName: text('full_name'),
   address: text('address').default(""),
@@ -126,7 +126,7 @@ export const chats = pgTable('chats', {
   chatId: uuid('chat_id').primaryKey().defaultRandom(),
   businessId: uuid('business_id').notNull().references(() => businesses.businessId), // Added businessId
   platformCustomerId: text('platform_customer_id').notNull(), // Changed from customerId
-  channelId: uuid('channel_id').notNull().references(() => connectedChannels.channelId),
+  channelId: uuid('channel_id').references(() => connectedChannels.channelId),
   providerUserId: text('provider_user_id').references(() => users.providerUserId), // Denormalized, nullable
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),

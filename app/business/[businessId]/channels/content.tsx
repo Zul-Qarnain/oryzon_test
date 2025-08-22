@@ -64,7 +64,7 @@ const BusinessChannelsListContent: React.FC = () => {
         {/* Future actions like view details or edit can go here */}
         {/* For now, settings are managed under business settings */}
         <button
-            onClick={() => router.push(`/business/${businessId}/settings#${channel.channelId}`)} // Example: deep link to channel settings if available
+            onClick={() => router.push(`/business/${businessId}/channels/${channel.channelId}`)} // Example: deep link to channel settings if available
             className="p-2 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-dark-secondary)] rounded-md transition-colors flex items-center"
             title="Manage Channel in Settings"
         >

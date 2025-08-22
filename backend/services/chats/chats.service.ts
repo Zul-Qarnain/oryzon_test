@@ -57,7 +57,7 @@ export class ChatsService {
       }
     });
     const chat = await query;
-    return chat || null;
+    return chat ? (chat as ChatWithIncludes) : null;
   }
 
   async getAllChats(options?: GetAllChatsOptions): Promise<{ data: ChatWithIncludes[]; total: number }> {
@@ -131,7 +131,7 @@ export class ChatsService {
 
     const [data, totalResult] = await Promise.all([chatsQuery, totalQuery]);
     
-    return { data, total: totalResult[0]?.value ?? 0 };
+    return { data: data as ChatWithIncludes[], total: totalResult[0]?.value ?? 0 };
   }
 
   async updateChat(chatId: string, data: UpdateChatData): Promise<Chat | null> {

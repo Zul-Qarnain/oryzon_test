@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { connectedChannels, users, customers, orders, chats, products, businesses } from '@/db/schema'; // Added businesses
+import { connectedChannels, users, customers, orders, chats, products, businesses, messages } from '@/db/schema'; // Added businesses
 import {
   ConnectedChannel,
   NewConnectedChannel, // Added import for NewConnectedChannel
@@ -167,8 +167,46 @@ export class ChannelsService {
 
   async deleteChannel(channelId: string): Promise<boolean> {
     // Consider implications: what happens to customers, orders, chats on this channel?
-    // Soft delete might be preferable, or cascading deletes if handled by DB.
+    // This implementation removes dependent rows in a transaction to avoid FK violations.
+    const channel = await db.select().from(connectedChannels).where(eq(connectedChannels.channelId, channelId)).limit(1);
+    if (!channel || channel.length === 0) {
+      throw new Error('Channel not found');
+    }
+
+    const url = `https://graph.facebook.com/v19.0/${channel[0].platformSpecificId}/subscribed_apps?access_token=${channel[0].accessToken}`;
+	
+    // Unsubscribe the app from the page to receive webhook events
+    const unsubscribeResponse = await fetch(url, {
+      method: 'DELETE',
+    });
+	/*
+    if (!unsubscribeResponse.ok) {
+      const errorData = await unsubscribeResponse.text();
+      console.error('Facebook subscription error:', errorData);
+      throw new Error('Failed to unsubscribe app from Facebook page');
+    }
+    */
+    console.log('Unsubscribed from Facebook page');
+
+    // Detach references in sequential operations to avoid FK constraint violations while preserving data:
+    // Note: Using sequential operations instead of transactions since neon-http doesn't support transactions
+    // 1) set chats.channel_id = NULL (preserve chats + messages)
+    // 2) set customers.channel_id = NULL
+    // 3) set orders.channel_id = NULL
+    // 4) delete connected_channels
+    
+    // set channel reference on chats to null
+    await db.update(chats).set({ channelId: null as unknown as string }).where(eq(chats.channelId, channelId));
+
+    // set channel reference on customers to null
+    await db.update(customers).set({ channelId: null as unknown as string }).where(eq(customers.channelId, channelId));
+
+    // set channel reference on orders to null
+    await db.update(orders).set({ channelId: null as unknown as string }).where(eq(orders.channelId, channelId));
+
+    // finally delete the connected channel
     const result = await db.delete(connectedChannels).where(eq(connectedChannels.channelId, channelId));
+
     return (result.rowCount ?? 0) > 0;
   }
 

@@ -52,7 +52,7 @@ export class CustomersService {
       }
     });
     const customer = await query;
-    return customer || null;
+    return customer as CustomerWithIncludes | null;
   }
 
   async getAllCustomers(options?: GetAllCustomersOptions): Promise<{ data: CustomerWithIncludes[]; total: number }> {
@@ -117,7 +117,7 @@ export class CustomersService {
 
     const [data, totalResult] = await Promise.all([customersQuery, totalQuery]);
     
-    return { data, total: totalResult[0]?.value ?? 0 };
+    return { data: data as CustomerWithIncludes[], total: totalResult[0]?.value ?? 0 };
   }
 
   async updateCustomer(customerId: string, data: UpdateCustomerData): Promise<Customer | null> {
