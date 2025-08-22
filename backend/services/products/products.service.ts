@@ -140,7 +140,7 @@ export class ProductsService {
 
   async getProductById(productId: string, options?: GetProductByIdOptions): Promise<ProductWithIncludes | null> {
     //  console.log("heheh")
-    // await this.getProductByImageURL("https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-142832910.jpg", "69caedb1-aa66-4d74-95aa-de5a761d64d8");
+    // await this.getProductsByImageURL("https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-142832910.jpg", "69caedb1-aa66-4d74-95aa-de5a761d64d8");
 
     const query = db.query.products.findFirst({
       where: eq(products.productId, productId),
@@ -414,8 +414,9 @@ export class ProductsService {
   }
 
 
-  async getProductByImageURL(imageURL: string,businessId: string): Promise<ProductWithIncludes[]| null> {
+  async getProductsByImageURL(imageURL: string,businessId: string): Promise<ProductWithIncludes[]| null> {
     const productIds: string[] = [];
+    const similarities: number[] = [];
     const imageEmbedding = await this.generateImageEmbedding(imageURL, true);
 
     if (!imageEmbedding) {
@@ -431,11 +432,13 @@ export class ProductsService {
     for await (const document of cursor) {
        if (document && document.$similarity &&  document.$similarity >= .80) {
          productIds.push(document._id as string);
+         similarities.push(document.$similarity);
        }
     }
     if (productIds.length === 0) {
       return null;
     }
+    const productsWithSimilarities: ProductWithIncludes[] = [];
     const products = await this.getAllProducts(
       {
         filter: {
@@ -443,9 +446,17 @@ export class ProductsService {
           businessId: businessId
         }
       }
-    )
-    console.log(products.data);
-    return products.data.length > 0 ? products.data : null;
+    );
+    if (products.data.length > 0) {
+      for (let i = 0; i < products.data.length; i++) {
+        productsWithSimilarities.push({
+          ...products.data[i],
+          similarity: productIds.indexOf(products.data[i].productId) > -1 ? similarities[productIds.indexOf(products.data[i].productId)] : null
+        });
+      }
+    }
+    console.log(productsWithSimilarities);
+    return productsWithSimilarities.length > 0 ? productsWithSimilarities : null;
 
   }
 

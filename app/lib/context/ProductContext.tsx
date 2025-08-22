@@ -26,6 +26,8 @@ export interface ProductContextType {
   updateProduct: (productId: string, data: Partial<Product>) => Promise<ApiResponse<ProductWithIncludes>>;
   deleteProduct: (productId: string) => Promise<ApiResponse<null>>;
   uploadImageCallback: (file: File | string, productId?: string) => Promise<{ url: string; imageId: string } | null>;
+  searchProductsByName: (keywords: string, businessId?: string) => Promise<ApiResponse<ProductWithIncludes[]>>;
+  searchProductsByImageUrl: (imageUrl: string, businessId?: string) => Promise<ApiResponse<{ total: number; data: ProductWithIncludes[] }>>;
   cleanError_Product: () => void;
 }
 
@@ -45,6 +47,7 @@ export const ProductProvider = ({
   const [total_product, setTotalProduct] = useState(0);
   const [product_loading, setProductLoading] = useState(false);
   const [image_uploading, setImageUploading] = useState(false);
+  
   const [error_product, setErrorProduct] = useState<string | null>(null);
 
   const fetchProduct = useCallback(async (productId: string, options?: { include?: string }): Promise<ApiResponse<ProductWithIncludes>> => {
@@ -161,6 +164,55 @@ export const ProductProvider = ({
 
   const cleanError_Product = useCallback(() => setErrorProduct(null), []);
 
+  const searchProductsByName = useCallback(async (keywords: string, businessId?: string): Promise<ApiResponse<ProductWithIncludes[]>> => {
+    setProductLoading(true);
+    setErrorProduct(null);
+    
+    const params = new URLSearchParams();
+    params.append('keywords', keywords);
+    if (businessId) {
+      params.append('businessId', businessId);
+    }
+    
+    const url = `/api/products/search?${params.toString()}`;
+    const response = await request<{ data: ProductWithIncludes[]; total: number }>("GET", url);
+
+    if (response.error) {
+      setErrorProduct(response.error);
+      setProducts([]);
+      setTotalProduct(0);
+      } else if (response.result) {
+        setProducts(response.result.data || []);
+        setTotalProduct(response.result.total || 0);
+      }
+    setProductLoading(false);
+    return response.result ? { result: response.result.data, error: null, statusCode: 200 } : { result: [], error: "No products found", statusCode: 404 };
+  }, [request]);
+
+  const searchProductsByImageUrl = useCallback(async (imageUrl: string, businessId?: string): Promise<ApiResponse<{ total: number; data: ProductWithIncludes[] }>> => {
+    setProductLoading(true);
+    setErrorProduct(null);
+    
+    // Use POST request to avoid header size limitations with large data URLs
+    const requestBody = {
+      imageUrl,
+      businessId
+    };
+    
+    const response = await request<{ total: number; data: ProductWithIncludes[] }>("POST", "/api/products/search", requestBody);
+
+    if (response.error) {
+      setErrorProduct(response.error);
+      setProducts([]);
+      setTotalProduct(0);
+    } else if (response.result) {
+      setProducts(response.result.data || []);
+      setTotalProduct(response.result.total || 0);
+    }
+    setProductLoading(false);
+    return response;
+  }, [request]);
+
   const uploadImageCallback = useCallback(async (file: File | string, productId?: string): Promise<{ url: string; imageId: string } | null> => {
     // If it's a string (URL), just return it with a generated imageId
     if (typeof file === 'string') {
@@ -231,6 +283,8 @@ export const ProductProvider = ({
         updateProduct,
         deleteProduct,
         uploadImageCallback,
+        searchProductsByName,
+        searchProductsByImageUrl,
         cleanError_Product,
       }}
     >

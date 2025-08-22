@@ -67,6 +67,7 @@ export interface ProductFilterOptions {
 
 // --- Related entity types for inclusion ---
 export type ProductWithIncludes = Product & {
+  similarity?: number | null; // Add similarity field
   business?: Business; // Relation to Business
   userViaProviderId?: User | null; // Denormalized user
   orderItems?: (InferSelectModel<typeof orderItems> & { order?: InferSelectModel<typeof import('@/db/schema').orders> })[];

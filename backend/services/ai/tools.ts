@@ -70,7 +70,7 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     expression: z.string().describe('The mathematical expression to evaluate (e.g., "2 + 3", "10 * 5", "20% of 50", "100 / 4")'),
   });
 
-  const getProductByImageUrlSchema = z.object({
+  const getProductsByImageURLSchema = z.object({
     imageUrl: z.string().describe('The URL of the product image to search for.'),
   });
 
@@ -198,9 +198,9 @@ export const getAITools = (customerId: string, connectedPageID: string, business
     }
   };
 
-  const getProductByImageUrlExecute = async ({ imageUrl }: z.infer<typeof getProductByImageUrlSchema>) => {
-    console.log(`getProductByImageUrl is being called with params: ${JSON.stringify({ imageUrl })}`);
-    const products = await productsService.getProductByImageURL(imageUrl, businessId);
+  const getProductsByImageURLExecute = async ({ imageUrl }: z.infer<typeof getProductsByImageURLSchema>) => {
+    console.log(`getProductsByImageURL is being called with params: ${JSON.stringify({ imageUrl })}`);
+    const products = await productsService.getProductsByImageURL(imageUrl, businessId);
     let result = '';
     if (products) {
 
@@ -390,10 +390,10 @@ export const getAITools = (customerId: string, connectedPageID: string, business
       schema: calculatorSchema,
     }),
 
-    getProductByImageUrl: tool(getProductByImageUrlExecute, {
-      name: 'getProductByImageUrl',
+    getProductsByImageURL: tool(getProductsByImageURLExecute, {
+      name: 'getProductsByImageURL',
       description: 'Get product information by its image URL for the current channel. Ask the user for the Image URL.',
-      schema: getProductByImageUrlSchema,
+      schema: getProductsByImageURLSchema,
     }),
 
     createProduct: tool(createProductExecute, {
