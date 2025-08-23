@@ -94,7 +94,7 @@ export class OrdersService {
           ? { 
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
               with: {
-                product: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.product ? true : undefined,
+                product: true,
               }
             } 
           : undefined,
@@ -162,7 +162,7 @@ export class OrdersService {
           ? { 
               limit: typeof options.include.orderItems === 'boolean' ? undefined : options.include.orderItems.limit,
               with: {
-                product: typeof options.include.orderItems === 'object' && options.include.orderItems.include?.product ? true : undefined,
+                product: true,
               }
             } 
           : undefined,

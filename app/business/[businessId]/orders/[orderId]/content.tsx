@@ -25,7 +25,7 @@ const OrderInfoContent: React.FC = () => {
 
   useEffect(() => {
     if (orderId && user) {
-      fetchOrder(orderId, { include: 'business,customer,orderItems.product,connectedChannel' });
+      fetchOrder(orderId, { include: 'business,customer,orderItems,connectedChannel' });
     }
   }, [orderId, user, fetchOrder]);
 
@@ -65,7 +65,6 @@ const OrderInfoContent: React.FC = () => {
   }
   
   const totalAmountValue = order.totalAmount ? parseFloat(order.totalAmount) : null;
-
   return (
     <>
       <div className="flex justify-between items-center mb-8">
@@ -142,8 +141,17 @@ const OrderInfoContent: React.FC = () => {
               {order.orderItems.map(item => {
                 const product = item.product as Product | undefined | null;
                 return (
-                  <div key={item.orderItemId} className="p-3 bg-[var(--bg-badge)] rounded-md flex justify-between items-center">
-                    <div>
+                  <div key={item.orderItemId} className="p-3 bg-[var(--bg-badge)] rounded-md flex items-center gap-4">
+                    {product?.imageUrl && (
+                      <div className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name || 'Product Image'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-grow">
                       <p className="font-medium text-[var(--text-on-dark-primary)]">
                         {product?.name || `Product ID: ${item.productId}`}
                       </p>
@@ -152,11 +160,11 @@ const OrderInfoContent: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                    <p className="text-sm text-[var(--text-on-dark-primary)]">Qty: {item.quantity}</p>
-                    <p className="text-sm text-[var(--text-on-dark-primary)]">
-                      @ {item.priceAtPurchase ? `${parseFloat(item.priceAtPurchase).toFixed(2)} ${order.currency}` : 'N/A'}
-                    </p>
-                  </div>
+                      <p className="text-sm text-[var(--text-on-dark-primary)]">Qty: {item.quantity}</p>
+                      <p className="text-sm text-[var(--text-on-dark-primary)]">
+                        @ {item.priceAtPurchase ? `${parseFloat(item.priceAtPurchase).toFixed(2)} ${order.currency}` : 'N/A'}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
