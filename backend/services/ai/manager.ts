@@ -12,7 +12,7 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   const messages: (HumanMessage | AIMessage | ToolMessage | SystemMessage)[] = []
   let totalOutPutToken = 0;
 
-  const systemPromptContent = generateSystemPrompt(businessDescription, customerInfo);
+  const systemPromptContent = generateSystemPrompt(businessDescription);
   messages.push(new SystemMessage(systemPromptContent));
 
   for (const msg of msgs) {
@@ -170,5 +170,4 @@ export const executeAgent = async (msgs: typeof messages.$inferSelect[], custome
   return (await processMsg(aiMessagex));
 
 };
-
 
