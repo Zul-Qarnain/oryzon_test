@@ -30,7 +30,7 @@ export interface GetChannelByIdOptions {
 export interface GetAllChannelsOptions {
   limit?: number;
   offset?: number;
-  filter?: Partial<Pick<ConnectedChannel, 'businessId' | 'providerUserId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>;
+  filter?: ChannelFilterOptions;
   orderBy?: keyof ConnectedChannel;
   include?: ChannelIncludeOptions;
 }
@@ -61,7 +61,7 @@ export interface ChannelFilterOptions {
   isActive?: ConnectedChannel['isActive'];
   channelName?: ConnectedChannel['channelName'];
   description?: ConnectedChannel['description'];
-  platformSpecificId?: ConnectedChannel['platformSpecificId'];
+  platformSpecificId?: ConnectedChannel['platformSpecificId'] | ConnectedChannel['platformSpecificId'][];
   createdAtBefore?: Date;
   createdAtAfter?: Date;
 }

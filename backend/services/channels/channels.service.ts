@@ -89,7 +89,11 @@ export class ChannelsService {
       conditions.push(ilike(connectedChannels.description, `%${filter.description}%`));
     }
     if (filter?.platformSpecificId) {
+      if (Array.isArray(filter.platformSpecificId)) {
+        conditions.push(inArray(connectedChannels.platformSpecificId, filter.platformSpecificId));
+      } else {
         conditions.push(eq(connectedChannels.platformSpecificId, filter.platformSpecificId));
+      }
     }
      if (filter?.createdAtBefore) {
       conditions.push(eq(connectedChannels.createdAt, filter.createdAtBefore));
@@ -145,9 +149,16 @@ export class ChannelsService {
   async updateChannel(channelId: string, data: UpdateChannelData): Promise<ConnectedChannel | null> {
     // businessId is not part of UpdateChannelData and should not be updated here.
     // providerUserId can be updated if present in data.
+    
+    // Handle date conversion for tokenExpiresAt if it's a string
+    const processedData = { ...data };
+    if (processedData.tokenExpiresAt && typeof processedData.tokenExpiresAt === 'string') {
+      processedData.tokenExpiresAt = new Date(processedData.tokenExpiresAt);
+    }
+    
     const [updatedChannel] = await db
       .update(connectedChannels)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...processedData, updatedAt: new Date() })
       .where(eq(connectedChannels.channelId, channelId))
       .returning();
     return updatedChannel || null;

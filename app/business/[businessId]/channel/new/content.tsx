@@ -61,6 +61,7 @@ const NewChannelForBusinessContent: React.FC = () => {
   }, [facebookPages, fb_loading]);
 
   const handlePageSelection = (page: FacebookPage) => {
+    if (page.connected) return; // Do not select if already connected
     setSelectedPage(page);
   };
 
@@ -262,15 +263,26 @@ const NewChannelForBusinessContent: React.FC = () => {
             <div
               key={page.id}
               onClick={() => handlePageSelection(page)}
-              className={`p-4 bg-[var(--bg-input)] border rounded-md cursor-pointer transition-colors ${
-                selectedPage?.id === page.id 
-                  ? 'border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/10'
-                  : 'border-[var(--border-medium)] hover:border-[var(--color-accent-primary)]'
+              className={`p-4 bg-[var(--bg-input)] border rounded-md transition-colors ${
+                page.connected
+                  ? 'border-gray-600 bg-gray-800/50 cursor-not-allowed'
+                  : `cursor-pointer ${
+                      selectedPage?.id === page.id
+                        ? 'border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/10'
+                        : 'border-[var(--border-medium)] hover:border-[var(--color-accent-primary)]'
+                    }`
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-[var(--text-on-dark-primary)]">{page.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-[var(--text-on-dark-primary)]">{page.name}</h3>
+                    {page.connected && (
+                      <span className="px-2 py-0.5 text-xs font-semibold text-green-300 bg-green-800/50 border border-green-600 rounded-full">
+                        Connected
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-[var(--text-on-dark-muted)]">Page ID: {page.id}</p>
                   {page.category && (
                     <p className="text-xs text-[var(--text-on-dark-muted)]">Category: {page.category}</p>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useChannelContext } from '@/app/lib/context/ChannelContext';
 import { useRouter } from 'next/navigation';
 import { ConnectedChannel } from '@/backend/services/channels/channels.types';
+import { Loader2, AlertCircle, Save, Trash2 } from 'lucide-react';
 
 interface ChannelDetailContentProps {
   businessId: string;
@@ -45,12 +46,11 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
         platformSpecificId: channel.platformSpecificId,
         accessToken: channel.accessToken,
         refreshToken: channel.refreshToken,
-        tokenExpiresAt: channel.tokenExpiresAt,
+ 
         isActive: channel.isActive,
         providerUserId: channel.providerUserId,
         description: channel.description,
-        createdAt: channel.createdAt,
-        updatedAt: channel.updatedAt
+      
       });
     }
   }, [channel]);
@@ -109,21 +109,22 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
   if (channel_loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading channel details...</div>
+      <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)] flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-[var(--icon-accent-primary)]" />
+        <p className="mt-4 text-lg">Loading channel details...</p>
       </div>
     );
   }
 
   if (error_channel) {
     return (
-      <div className="min-h-screen p-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <strong>Error:</strong> {error_channel}
-        </div>
+      <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)] flex flex-col items-center justify-center p-4">
+        <AlertCircle className="h-12 w-12 text-[var(--text-error)] mb-4" />
+        <h2 className="text-2xl font-semibold mb-2 text-[var(--text-error)]">Error Loading Channel</h2>
+        <p className="text-center text-[var(--text-on-dark-muted)] mb-6">{error_channel}</p>
         <button
           onClick={() => router.push(`/business/${businessId}/channels`)}
-          className="mt-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+          className="px-4 py-2 bg-[var(--color-accent-primary)] text-white rounded-md hover:bg-opacity-80 transition-colors"
         >
           Back to Channels
         </button>
@@ -133,11 +134,13 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
   if (!channel) {
     return (
-      <div className="min-h-screen p-6">
-        <div className="text-lg">Channel not found</div>
+      <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-on-dark-primary)] flex flex-col items-center justify-center p-4">
+        <AlertCircle className="h-12 w-12 text-[var(--text-error)] mb-4" />
+        <h2 className="text-2xl font-semibold mb-2">Channel Not Found</h2>
+        <p className="text-center text-[var(--text-on-dark-muted)] mb-6">The requested channel could not be found.</p>
         <button
           onClick={() => router.push(`/business/${businessId}/channels`)}
-          className="mt-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+          className="px-4 py-2 bg-[var(--color-accent-primary)] text-white rounded-md hover:bg-opacity-80 transition-colors"
         >
           Back to Channels
         </button>
@@ -146,68 +149,64 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Channel Details</h1>
-              <p className="text-gray-600 mt-2">{channel.channelName}</p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => router.push(`/business/${businessId}/channels`)}
-                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-              >
-                Back to Channels
-              </button>
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Edit Channel
-                </button>
-              )}
-            </div>
-          </div>
+    <>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--text-page-heading)]">Channel Details</h1>
+          <p className="text-[var(--text-on-dark-muted)] mt-2">{channel.channelName}</p>
         </div>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => router.push(`/business/${businessId}/channels`)}
+            className="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-on-dark-secondary)] hover:bg-[var(--bg-accent-hover)] hover:text-[var(--text-on-dark-primary)] transition-colors rounded-md"
+          >
+            Back to Channels
+          </button>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-primary-glow)] transition-colors rounded-md"
+            >
+              Edit Channel
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Channel Details Form */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Channel Information</h2>
+      {/* Channel Details Form */}
+      <div className="bg-[var(--bg-secondary)] rounded-xl shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold mb-6 text-[var(--text-on-dark-secondary)]">Channel Information</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Channel ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Channel ID
               </label>
               <input
                 type="text"
                 value={formData.channelId || ''}
                 disabled={true}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500"
+                className="w-full p-3 bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)] border border-[var(--border-medium)] rounded-md"
               />
             </div>
 
             {/* Business ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Business ID
               </label>
               <input
                 type="text"
                 value={formData.businessId || ''}
                 disabled={true}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500"
+                className="w-full p-3 bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)] border border-[var(--border-medium)] rounded-md"
               />
             </div>
 
             {/* Channel Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Channel Name
               </label>
               <input
@@ -215,23 +214,27 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 value={formData.channelName || ''}
                 onChange={(e) => handleInputChange('channelName', e.target.value)}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
               />
             </div>
 
             {/* Platform Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Platform Type
               </label>
               <select
                 value={formData.platformType || ''}
                 onChange={(e) => handleInputChange('platformType', e.target.value)}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
               >
                 <option value="FACEBOOK_PAGE">Facebook Page</option>
@@ -246,7 +249,7 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
             {/* Platform Specific ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Platform Specific ID
               </label>
               <input
@@ -254,15 +257,17 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 value={formData.platformSpecificId || ''}
                 onChange={(e) => handleInputChange('platformSpecificId', e.target.value)}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Description
               </label>
               <input
@@ -270,8 +275,10 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 value={formData.description || ''}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
                 placeholder="Channel description"
               />
@@ -279,7 +286,7 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
             {/* Is Active */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Active Status
               </label>
               <div className="flex items-center">
@@ -288,11 +295,11 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                   checked={formData.isActive || false}
                   onChange={(e) => handleInputChange('isActive', e.target.checked)}
                   disabled={!isEditing}
-                  className={`h-4 w-4 text-blue-600 rounded ${
-                    isEditing ? 'focus:ring-blue-500 border-gray-300' : 'text-gray-400'
+                  className={`h-5 w-5 text-[var(--color-accent-primary)] border-[var(--border-medium)] rounded ${
+                    isEditing ? 'focus:ring-[var(--color-accent-primary)]' : 'opacity-50'
                   }`}
                 />
-                <span className="ml-2 text-sm text-gray-700">
+                <span className="ml-2 text-sm font-medium text-[var(--text-on-dark-primary)]">
                   Channel is active
                 </span>
               </div>
@@ -300,7 +307,7 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
             {/* Provider User ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Provider User ID
               </label>
               <input
@@ -308,15 +315,17 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 value={formData.providerUserId || ''}
                 onChange={(e) => handleInputChange('providerUserId', e.target.value)}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
               />
             </div>
 
             {/* Access Token */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Access Token
               </label>
               <textarea
@@ -324,8 +333,10 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 onChange={(e) => handleInputChange('accessToken', e.target.value)}
                 disabled={!isEditing}
                 rows={3}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
                 placeholder="Access token for platform authentication"
               />
@@ -333,7 +344,7 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
 
             {/* Refresh Token */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-on-dark-muted)] mb-2">
                 Refresh Token
               </label>
               <textarea
@@ -341,59 +352,21 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                 onChange={(e) => handleInputChange('refreshToken', e.target.value)}
                 disabled={!isEditing}
                 rows={3}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
+                className={`w-full p-3 border border-[var(--border-medium)] rounded-md ${
+                  isEditing 
+                    ? 'bg-[var(--bg-badge)] text-[var(--text-on-dark-primary)] focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]' 
+                    : 'bg-[var(--bg-badge)] text-[var(--text-on-dark-muted)]'
                 }`}
                 placeholder="Refresh token for platform authentication"
               />
             </div>
 
-            {/* Token Expires At */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Token Expires At
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.tokenExpiresAt ? new Date(formData.tokenExpiresAt).toISOString().slice(0, 16) : ''}
-                onChange={(e) => handleInputChange('tokenExpiresAt', e.target.value ? new Date(e.target.value) : null)}
-                disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
-                  isEditing ? 'focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-100 text-gray-500'
-                }`}
-              />
-            </div>
-
-            {/* Created At */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Created At
-              </label>
-              <input
-                type="text"
-                value={formData.createdAt ? new Date(formData.createdAt).toLocaleString() : ''}
-                disabled={true}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500"
-              />
-            </div>
-
-            {/* Updated At */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Updated At
-              </label>
-              <input
-                type="text"
-                value={formData.updatedAt ? new Date(formData.updatedAt).toLocaleString() : ''}
-                disabled={true}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500"
-              />
-            </div>
+            
           </div>
 
           {/* Error Display */}
           {error_channel && (
-            <div className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <div className="mt-6 p-3 bg-red-500/20 text-red-300 border border-red-500 rounded-md">
               <strong>Error:</strong> {error_channel}
             </div>
           )}
@@ -404,11 +377,16 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ${
-                  isSaving ? 'opacity-50 cursor-not-allowed' : ''
+                className={`w-full md:w-auto px-6 py-3 bg-[var(--color-accent-primary)] text-white font-semibold rounded-md hover:bg-opacity-80 transition-colors disabled:opacity-50 flex items-center justify-center ${
+                  isSaving ? 'cursor-not-allowed' : ''
                 }`}
               >
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-5 w-5 mr-2" />
+                )}
+                {isSaving ? 'Saving Changes...' : 'Save Changes'}
               </button>
               <button
                 onClick={() => {
@@ -433,31 +411,35 @@ export default function ChannelDetailContent({ businessId, channelId }: ChannelD
                   }
                 }}
                 disabled={isSaving}
-                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                className="px-6 py-3 bg-[var(--bg-accent)] text-[var(--text-on-dark-secondary)] hover:bg-[var(--bg-accent-hover)] hover:text-[var(--text-on-dark-primary)] transition-colors rounded-md"
               >
                 Cancel
               </button>
             </div>
           )}
-        </div>
-
-        {/* Delete Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Danger Zone</h2>
-          <p className="text-gray-600 mb-4">
-            Once you delete a channel, there is no going back. Please be certain.
-          </p>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className={`bg-red-500 hover:bg-red-700 text-white font-bold py-3 px-6 rounded ${
-              isDeleting ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete Channel'}
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* Delete Section */}
+      <div className="bg-[var(--bg-secondary)] rounded-xl shadow-lg p-6">
+        <h3 className="text-xl font-semibold text-[var(--text-error)] mb-4">Danger Zone</h3>
+        <p className="text-[var(--text-on-dark-muted)] mb-4">
+          Once you delete a channel, there is no going back. Please be certain.
+        </p>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className={`px-6 py-3 bg-red-500 text-white font-semibold rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center ${
+            isDeleting ? 'cursor-not-allowed' : ''
+          }`}
+        >
+          {isDeleting ? (
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+          ) : (
+            <Trash2 className="h-5 w-5 mr-2" />
+          )}
+          {isDeleting ? 'Deleting Channel...' : 'Delete Channel'}
+        </button>
+      </div>
+    </>
   );
 }

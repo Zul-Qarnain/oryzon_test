@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     const isActive = getStringFilterParam(searchParams, 'isActive');
     const channelName = getStringFilterParam(searchParams, 'channelName');
     const description = getStringFilterParam(searchParams, 'description');
+    const platformSpecificId = getStringFilterParam(searchParams, 'platformSpecificId');
 
     const includeOptions = parseIncludeQuery<ChannelIncludeOptions, keyof ChannelIncludeOptions>(
       includeQuery,
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
       include: includeOptions,
       limit,
       offset,
-      filter: {} as Partial<Pick<ConnectedChannel, 'businessId' | 'providerUserId' | 'platformType' | 'isActive' | 'channelName'| 'platformSpecificId' | 'description'>>, // Initialize filter
+      filter: {}, // Initialize filter
     };
 
     if (businessId) options.filter!.businessId = businessId;
@@ -51,7 +52,11 @@ export async function GET(request: Request) {
     if (isActive !== null && isActive !== undefined) options.filter!.isActive = isActive === 'true';
     if (channelName) options.filter!.channelName = channelName;
     if (description) options.filter!.description = description;
-    // Add other filters from GetAllChannelsOptions.filter if needed, e.g., platformSpecificId
+    if (platformSpecificId) {
+      options.filter!.platformSpecificId = platformSpecificId.includes(',')
+        ? platformSpecificId.split(',')
+        : platformSpecificId;
+    }
 
     const result = await channelsService.getAllChannels(options);
     return new Response(JSON.stringify(result), { status: 200 });

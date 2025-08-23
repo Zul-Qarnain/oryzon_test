@@ -13,6 +13,7 @@ export interface FacebookPage {
   access_token: string;
   category?: string;
   tasks?: string[];
+  connected?: boolean;
 }
 
 export interface PaginationOptions {
@@ -70,22 +71,19 @@ export const ChannelProvider = ({
     const checkFacebookAuthResult = async () => {
       const authResult = localStorage.getItem('facebook_auth_result');
       if (authResult) {
+        setFbLoading(true);
         setTimeout(async () => {
-        localStorage.removeItem('facebook_auth_result');
-        const { code, error } = JSON.parse(authResult);
-        alert("auth result found")
-        if (code) {
-          setFbLoading(true);
-          try {
+          localStorage.removeItem('facebook_auth_result');
+          const { code, error } = JSON.parse(authResult);
+          
+          if (code) {
+            setFbLoading(true);
             await handleFacebookAuthSuccess(code);
-          } catch (err) {
-            setErrorChannel(`Failed to process Facebook auth: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            setFbLoading(false);
+          } else if (error) {
+            setErrorChannel('Facebook login was cancelled or failed');
           }
-          setFbLoading(false);
-        } else if (error) {
-          setErrorChannel('Facebook login was cancelled or failed');
-        }
-        },3000);
+        }, 4000);
       }
     };
 
@@ -93,60 +91,64 @@ export const ChannelProvider = ({
   }, []);
 
   const handleFacebookAuthSuccess = async (code: string) => {
-    try {
-      // Exchange code for access token using our backend
-      const tokenResponse = await fetch('/api/auth/facebook/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: code,
-          redirectUri: window.location.origin + '/auth/facebook/callback'
-        }),
-      });
+    // Exchange code for access token using our backend
+    const tokenResponse = await request<{ access_token: string }>("POST", "/api/auth/facebook/token", {
+      code: code,
+      redirectUri: window.location.origin + '/auth/facebook/callback'
+    });
 
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to exchange code for token');
+    if (tokenResponse.error || !tokenResponse.result) {
+      setErrorChannel(tokenResponse.error || 'Failed to exchange code for token');
+      return;
+    }
+
+    const { access_token } = tokenResponse.result;
+    setUserAccessToken(access_token);
+
+    // Set access token in local storage
+    localStorage.setItem('facebook_access_token', access_token);
+
+    // Fetch user's Facebook pages
+    const pagesResponse = await fetch(
+      `https://graph.facebook.com/v19.0/me/accounts?access_token=${access_token}&fields=id,name,access_token,category,tasks`
+    );
+
+    if (!pagesResponse.ok) {
+      setErrorChannel('Failed to fetch Facebook pages');
+      return;
+    }
+
+    const pagesData = await pagesResponse.json();
+
+    if (pagesData.data && pagesData.data.length > 0) {
+      const pageIds = pagesData.data.map((page: { id: string }) => page.id);
+
+      // Fetch existing channels to check for connected pages
+      const existingChannelsResponse = await request<{ data: ConnectedChannel[] }>("GET", `/api/channels?platformSpecificId=${pageIds.join(',')}`);
+      if (existingChannelsResponse.error || !existingChannelsResponse.result) {
+        setErrorChannel(existingChannelsResponse.error || 'Failed to fetch existing channels');
+        return;
       }
+      const existingChannelsData = existingChannelsResponse.result;
+      const existingChannelIds = new Set(existingChannelsData.data.map((channel: ConnectedChannel) => channel.platformSpecificId));
 
-      const { access_token } = await tokenResponse.json();
-      setUserAccessToken(access_token);
-
-      // Set access token in local storage
-      localStorage.setItem('facebook_access_token', access_token);
-
-      // Fetch user's Facebook pages
-      const pagesResponse = await fetch(
-        `https://graph.facebook.com/v19.0/me/accounts?access_token=${access_token}&fields=id,name,access_token,category,tasks`
-      );
-
-      if (!pagesResponse.ok) {
-        throw new Error('Failed to fetch Facebook pages');
-      }
-
-      const pagesData = await pagesResponse.json();
-
-      if (pagesData.data) {
-        const pages: FacebookPage[] = pagesData.data.map((page: {
-          id: string;
-          name: string;
-          access_token: string;
-          category?: string;
-          tasks?: string[];
-        }) => ({
-          id: page.id,
-          name: page.name,
-          access_token: page.access_token,
-          category: page.category,
-          tasks: page.tasks
-        }));
-        setFacebookPages(pages);
-      } else {
-        setErrorChannel('No Facebook pages found');
-      }
-    } catch (error) {
-      throw new Error(`Failed to fetch Facebook pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const pages: FacebookPage[] = pagesData.data.map((page: {
+        id: string;
+        name: string;
+        access_token: string;
+        category?: string;
+        tasks?: string[];
+      }) => ({
+        id: page.id,
+        name: page.name,
+        access_token: page.access_token,
+        category: page.category,
+        tasks: page.tasks,
+        connected: existingChannelIds.has(page.id),
+      }));
+      setFacebookPages(pages);
+    } else {
+      setErrorChannel('No Facebook pages found');
     }
   };
 
@@ -307,11 +309,7 @@ export const ChannelProvider = ({
             window.removeEventListener('message', handleMessage);
             popup.close();
 
-            try {
-              await handleFacebookAuthSuccess(event.data.code);
-            } catch (error) {
-              setErrorChannel(`Failed to fetch Facebook pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
+            await handleFacebookAuthSuccess(event.data.code);
 
             setFbLoading(false);
           } else if (event.data.type === 'FACEBOOK_AUTH_ERROR') {
