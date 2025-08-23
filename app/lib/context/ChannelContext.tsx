@@ -70,6 +70,7 @@ export const ChannelProvider = ({
     const checkFacebookAuthResult = async () => {
       const authResult = localStorage.getItem('facebook_auth_result');
       if (authResult) {
+        setTimeout(async () => {
         localStorage.removeItem('facebook_auth_result');
         const { code, error } = JSON.parse(authResult);
         alert("auth result found")
@@ -84,6 +85,7 @@ export const ChannelProvider = ({
         } else if (error) {
           setErrorChannel('Facebook login was cancelled or failed');
         }
+        },3000);
       }
     };
 
